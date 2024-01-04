@@ -9,6 +9,7 @@ const SCRIPTS = {
 export async function main(ns) {
   ns.tail();
   ns.disableLog("ALL");
+  const target = ns.args[0]
   const servers = [
     // "iron-gym",
     // "n00dles",
@@ -30,7 +31,7 @@ export async function main(ns) {
   // servers.forEach((server) => prepareServer(ns, server));
   while ( true ) {
     ns.print("Tick...")
-    await prepareServer(ns, "iron-gym")
+    await prepareServer(ns, target)
     await ns.sleep(1000)
 
   }
@@ -116,7 +117,7 @@ class Cluster {
   }
 
   distribute(ns, script, desiredThreads, ...args) {
-    const allServers = getUsableServers(ns);
+    const allServers = getUsableServers(ns).reverse();
     const availableClusterThreads = this.getAvailableThreads(ns, script)
 
     if (availableClusterThreads == 0) {
@@ -150,3 +151,7 @@ class Cluster {
 }
 // TODO: Retrieve current cluster state. Eg scan procs on servers and tally the process and threads
 // Add queue to interface with cluster instead of immedate distribution
+// Optimisation oportunities:
+// * Keep hacking until 50% balance (will account for failed hacks)
+// * Auto scale to all targes within a single invocation. Requires some state management
+// * Prioritise single machine over distributed computing. Perhaps identify the machine with most available threads in order of prority
