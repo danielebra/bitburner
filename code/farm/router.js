@@ -10,30 +10,37 @@ export async function main(ns) {
   ns.tail();
   ns.disableLog("ALL");
   const servers = [
-    "iron-gym",
-    "n00dles",
-    "hong-fang-tea",
-    "nectar-net",
-    "zer0",
-    "phantasy",
-    "omega-net",
-    "neo-net",
-    "silver-helix",
-    "johnson-ortho",
-    "crush-fitness",
-    "harakiri-sushi",
-    "foodnstuff",
-    "joesguns",
-    "max-hardware",
-    "sigma-cosmetics",
+    // "iron-gym",
+    // "n00dles",
+    // "hong-fang-tea",
+    // "nectar-net",
+    // "zer0",
+    // "phantasy",
+    // "omega-net",
+    // "neo-net",
+    // "silver-helix",
+    // "johnson-ortho",
+    // "crush-fitness",
+    // "harakiri-sushi",
+    // "foodnstuff",
+    // "joesguns",
+    // "max-hardware",
+    // "sigma-cosmetics",
   ];
-  servers.forEach((server) => prepareServer(ns, server));
+  // servers.forEach((server) => prepareServer(ns, server));
+  while ( true ) {
+    ns.print("Tick...")
+    await prepareServer(ns, "iron-gym")
+    await ns.sleep(1000)
+
+  }
   // attackServer(ns, "iron-gym");
 }
 
 /** @param {NS} ns */
 /** @param {string} server */
 async function attackServer(ns, server) {
+  const data = await analyzeServer(ns, server);
 
 }
 
@@ -43,13 +50,24 @@ async function prepareServer(ns, server) {
   const data = await analyzeServer(ns, server);
   const c = new Cluster()
 
-  // if (data.additionalSecurity >= 3) {
-  //   ns.print(`Would like to weaken ${server}`);
-  //   c.distribute(ns, SCRIPTS.WEAKEN, data.weakenThreadsNeeded, server)
-  // }
-  if (data.moneyBalancePercentage <= 95) {
-    ns.print(`Would like to grow ${server}`)
+  if (data.additionalSecurity >= 3) {
+    ns.print(`Would like to weaken ${server}. ${data.prettyWeaken}`);
+    c.distribute(ns, SCRIPTS.WEAKEN, data.weakenThreadsNeeded, server)
+    await ns.sleep(data.currentWeakenTime)
+    return false
+  }
+  else if (data.moneyBalancePercentage <= 95) {
+    ns.print(`Would like to grow ${server}. ${data.prettyGrow}`)
     c.distribute(ns, SCRIPTS.GROW, data.growThreadsNeeded, server)
+    await ns.sleep(data.currentGrowTime)
+    return false
+  }
+  else {
+    ns.print(`Would like to hack ${server}. ${data.prettyHack}`)
+    const threadsForHalfBalance = Math.floor(data.hackThreadsNeeded / 2)
+    c.distribute(ns, SCRIPTS.HACK, threadsForHalfBalance, server)
+    await ns.sleep(data.currentHackTime)
+    return true
   }
 }
 
@@ -81,7 +99,7 @@ async function analyzeServer(ns, server) {
   const prettyWeaken = `${ns.tFormat(currentWeakenTime)} (t=${weakenThreadsNeeded})`
   const prettySecurity = `${minSecurity} / ${currentSecurity} (Δ ${additionalSecurity})`
   ns.print(`${server}: ${prettyCash}, Grow ${prettyGrow}, Hack ${prettyHack}, Weaken ${prettyWeaken}, Security ${prettySecurity}`)
-  return { currentWeakenTime, currentGrowTime, currentHackTime, hackThreadsNeeded, growThreadsNeeded, weakenThreadsNeeded, additionalSecurity, moneyBalancePercentage}
+  return { currentWeakenTime, currentGrowTime, currentHackTime, hackThreadsNeeded, growThreadsNeeded, weakenThreadsNeeded, additionalSecurity, moneyBalancePercentage, prettyHack, prettyWeaken, prettySecurity, prettyGrow}
 }
 class Cluster {
   getAvailableThreads(ns, script)  {
