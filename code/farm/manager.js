@@ -70,39 +70,32 @@ function getAvailableThreads(ns, script) {
   return totalThreads;
 }
 
-function distributeAndRun(
-  ns,
-  script,
-  target,
-  totalThreads,
-  hackPercentage = 1,
-) {
-  const allServers = getUsableServers(ns);
-  let threadsRemaining = totalThreads;
 
-  for (const server of allServers) {
-    if (threadsRemaining <= 0) break;
+function distributeAndRun(ns, script, target, totalThreads, hackPercentage = 1) {
+    const allServers = getUsableServers(ns);
+    let threadsRemaining = Math.min(totalThreads, getAvailableThreads(ns, script));
 
-    const serverRam = ns.getServerMaxRam(server);
-    const usedRam = ns.getServerUsedRam(server);
-    const scriptRam = ns.getScriptRam(script);
-    let threadsOnServer = Math.floor((serverRam - usedRam) / scriptRam);
-    threadsOnServer = Math.min(threadsOnServer, threadsRemaining);
-    if (!ns.fileExists(script, server)) {
-      ns.scp(script, server);
+    for (const server of allServers) {
+        if (threadsRemaining <= 0) break;
+
+        const serverRam = ns.getServerMaxRam(server);
+        const usedRam = ns.getServerUsedRam(server);
+        const scriptRam = ns.getScriptRam(script);
+        let threadsOnServer = Math.floor((serverRam - usedRam) / scriptRam);
+        threadsOnServer = Math.min(threadsOnServer, threadsRemaining);
+
+        if (!ns.fileExists(script, server)) {
+            ns.scp(script, server);
+        }
+        if (threadsOnServer > 0) {
+            ns.exec(script, server, threadsOnServer, target, hackPercentage);
+            threadsRemaining -= threadsOnServer;
+            ns.print("Started " + script + ' on ' + server + ' with ' + threadsOnServer);
+        }
     }
-    if (threadsOnServer > 0) {
-      ns.exec(script, server, threadsOnServer, target, hackPercentage);
-      threadsRemaining -= threadsOnServer;
-      ns.print(
-        "Started " + script + " on " + server + " with " + threadsOnServer + " threads",
-      );
-    }
-  }
 
-  if (threadsRemaining > 0) {
-    ns.print(
-      `Warning: Not enough RAM to run ${totalThreads} threads. ${threadsRemaining} threads were not started.`,
-    );
-  }
+    if (threadsRemaining > 0) {
+        ns.print(`Warning: Not enough RAM to run ${totalThreads} threads. ${threadsRemaining} threads were not started.`);
+    }
 }
+
