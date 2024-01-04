@@ -1,36 +1,59 @@
 import { getUsableServers } from "/code/utils.js";
-/** @param {NS} ns **/
 export async function main(ns) {
-  const target = ns.args[0];
-  const weakenScript = "/code/farm/weaken.js"; // Update paths as necessary
-  const growScript = "/code/farm/grow.js";
-  const hackScript = "/code/farm/hack.js";
+    const target = ns.args[0];
+    const weakenScript = '/code/farm/weaken.js';
+    const growScript = '/code/farm/grow.js';
+    const hackScript = '/code/farm/hack.js';
 
-  const weakenTime = ns.getWeakenTime(target);
-  const growTime = ns.getGrowTime(target);
-  const hackTime = ns.getHackTime(target);
+    const minSecurityLevel = ns.getServerMinSecurityLevel(target);
+    const maxMoney = ns.getServerMaxMoney(target);
+    ns.tail();
+    ns.disableLog("ALL");
 
-  const delayForGrow = weakenTime - growTime;
-  const delayForHack = weakenTime - hackTime;
-  ns.tail();
-  ns.disableLog("ALL");
-  while (true) {
-    const totalAvailableThreads = getAvailableThreads(ns, weakenScript); // Get total threads for the most demanding script
+    while (true) {
+        const currentSecurityLevel = ns.getServerSecurityLevel(target);
+        const currentMoney = ns.getServerMoneyAvailable(target);
 
-    // Allocate threads to each operation, ensuring total does not exceed totalAvailableThreads
-    const weakenThreads = Math.floor(totalAvailableThreads / 3);
-    const growThreads = Math.floor(totalAvailableThreads / 3);
-    const hackThreads = totalAvailableThreads - weakenThreads - growThreads;
+        const weakenTime = ns.getWeakenTime(target);
+        const growTime = ns.getGrowTime(target);
+        const hackTime = ns.getHackTime(target);
 
-    // Distribute weaken, grow, and hack operations across servers
-    distributeAndRun(ns, weakenScript, target, weakenThreads);
-    await ns.sleep(delayForGrow - 200);
-    distributeAndRun(ns, growScript, target, growThreads);
-    await ns.sleep(delayForHack - delayForGrow);
-    distributeAndRun(ns, hackScript, target, hackThreads, 0.5);
+        const delayForGrow = weakenTime - growTime;
+        const delayForHack = weakenTime - hackTime;
 
-    await ns.sleep(1000);
-  }
+        // Determine the required number of threads for each operation
+        let requiredWeakenThreads = (currentSecurityLevel > minSecurityLevel) ?
+            Math.ceil((currentSecurityLevel - minSecurityLevel) / ns.weakenAnalyze(1)) : 0;
+        
+        // Special case: if security is at min and weaken time is longer than hack time, skip weaken
+        if (currentSecurityLevel === minSecurityLevel && weakenTime > hackTime) {
+            requiredWeakenThreads = 0;
+        }
+
+        const requiredGrowThreads = Math.ceil(ns.growthAnalyze(target, maxMoney / currentMoney));
+        const hackAmount = 0.5; // Amount to hack (e.g., 50% of the server's money)
+        const requiredHackThreads = Math.floor(ns.hackAnalyzeThreads(target, currentMoney * hackAmount));
+
+        // Allocate available threads based on the requirement
+        const weakenThreads = Math.min(requiredWeakenThreads, getAvailableThreads(ns, weakenScript));
+        const growThreads = Math.min(requiredGrowThreads, getAvailableThreads(ns, growScript));
+        const hackThreads = Math.min(requiredHackThreads, getAvailableThreads(ns, hackScript));
+
+        // Execute operations
+        if (weakenThreads > 0) {
+            distributeAndRun(ns, weakenScript, target, weakenThreads);
+        }
+        await ns.sleep(delayForGrow);
+        if (growThreads > 0) {
+            distributeAndRun(ns, growScript, target, growThreads);
+        }
+        await ns.sleep(delayForHack);
+        if (hackThreads > 0) {
+            distributeAndRun(ns, hackScript, target, hackThreads);
+        }
+
+        await ns.sleep(1000); // Cooldown period
+    }
 }
 
 function getAvailableThreads(ns, script) {
@@ -72,7 +95,7 @@ function distributeAndRun(
       ns.exec(script, server, threadsOnServer, target, hackPercentage);
       threadsRemaining -= threadsOnServer;
       ns.print(
-        "Started + " + script + " on " + server + " with " + threadsOnServer,
+        "Started " + script + " on " + server + " with " + threadsOnServer + " threads",
       );
     }
   }
