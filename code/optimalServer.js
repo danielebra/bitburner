@@ -24,7 +24,9 @@ export function calculateOptimalServerMemory(ns, maxServers, playerMoney) {
 function calculateServerCosts(ns, maxServers) {
   let serverCosts = {};
   for (let mem = 2; mem <= ns.getPurchasedServerMaxRam(); mem *= 2) {
-    serverCosts[mem] = ns.getPurchasedServerCost(mem) * maxServers;
+    const price = ns.getPurchasedServerCost(mem)
+    ns.tprint(`${mem.toLocaleString()}: ${price.toLocaleString('en-US', {style: 'currency', currency:'USD'})}`)
+    serverCosts[mem] = price * maxServers;
   }
   return serverCosts;
 }
