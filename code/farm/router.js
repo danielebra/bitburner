@@ -43,11 +43,14 @@ async function prepareServer(ns, server) {
   const data = await analyzeServer(ns, server);
   const c = new Cluster()
 
-  if (data.additionalSecurity >= 3) {
-    ns.print(`Would like to weaken ${server}`);
-    c.distribute(ns, SCRIPTS.WEAKEN, data.weakenThreadsNeeded, server)
+  // if (data.additionalSecurity >= 3) {
+  //   ns.print(`Would like to weaken ${server}`);
+  //   c.distribute(ns, SCRIPTS.WEAKEN, data.weakenThreadsNeeded, server)
+  // }
+  if (data.moneyBalancePercentage <= 95) {
+    ns.print(`Would like to grow ${server}`)
+    c.distribute(ns, SCRIPTS.GROW, data.growThreadsNeeded, server)
   }
-
 }
 
 /** @param {NS} ns */
@@ -58,6 +61,7 @@ async function analyzeServer(ns, server) {
   const maxMoney = ns.getServerMaxMoney(server);
   const currentHackTime = ns.getHackTime(server);
   const currentGrowTime = ns.getGrowTime(server);
+  const moneyBalancePercentage = (currentMoney / maxMoney * 100).toFixed(2)
 
   // Security
   const currentSecurity = ns.getServerSecurityLevel(server);
@@ -71,13 +75,13 @@ async function analyzeServer(ns, server) {
   const weakenThreadsNeeded = Math.ceil((currentSecurity - minSecurity) * 20)
 
 
-  const prettyCash = `${ns.nFormat(currentMoney, "$0.0a")} / ${ns.nFormat(maxMoney, "$0.0a")} (${(currentMoney / maxMoney * 100).toFixed(2)}%)`
+  const prettyCash = `${ns.nFormat(currentMoney, "$0.0a")} / ${ns.nFormat(maxMoney, "$0.0a")} (${moneyBalancePercentage}%)`
   const prettyHack = `${ns.tFormat(currentHackTime)} (t=${hackThreadsNeeded})`
   const prettyGrow = `${ns.tFormat(currentGrowTime)} (t=${growThreadsNeeded})`
   const prettyWeaken = `${ns.tFormat(currentWeakenTime)} (t=${weakenThreadsNeeded})`
   const prettySecurity = `${minSecurity} / ${currentSecurity} (Δ ${additionalSecurity})`
   ns.print(`${server}: ${prettyCash}, Grow ${prettyGrow}, Hack ${prettyHack}, Weaken ${prettyWeaken}, Security ${prettySecurity}`)
-  return { currentWeakenTime, currentGrowTime, currentHackTime, hackThreadsNeeded, growThreadsNeeded, weakenThreadsNeeded, additionalSecurity}
+  return { currentWeakenTime, currentGrowTime, currentHackTime, hackThreadsNeeded, growThreadsNeeded, weakenThreadsNeeded, additionalSecurity, moneyBalancePercentage}
 }
 class Cluster {
   getAvailableThreads(ns, script)  {
@@ -126,3 +130,5 @@ class Cluster {
 
   }
 }
+// TODO: Retrieve current cluster state. Eg scan procs on servers and tally the process and threads
+// Add queue to interface with cluster instead of immedate distribution
