@@ -1,18 +1,23 @@
 // Objective: Maintain 50% of prize pool
 
-import { getUsableServers  } from "/code/utils.js";
+import { getUsableServers } from "/code/utils.js";
 export class DefaultMap extends Map {
-    constructor(defaultVal, ...args) {
-        super(...args);
-        this.defaultVal = defaultVal;
-    }
+  constructor(defaultVal, ...args) {
+    super(...args);
+    this.defaultVal = defaultVal;
+  }
 
-    get(key) {
-        if (!this.has(key)) {
-            this.set(key, typeof this.defaultVal === 'function' ? new this.defaultVal() : this.defaultVal);
-        }
-        return super.get(key);
+  get(key) {
+    if (!this.has(key)) {
+      this.set(
+        key,
+        typeof this.defaultVal === "function"
+          ? new this.defaultVal()
+          : this.defaultVal,
+      );
     }
+    return super.get(key);
+  }
 }
 
 const SCRIPTS = {
@@ -51,41 +56,39 @@ export async function main(ns) {
 
   // }
   // await attackServer(ns, "n00dles")
-  await Promise.all(servers.map(server => attackServer(ns, server)))
+  await Promise.all(servers.map((server) => attackServer(ns, server)));
 }
 
 /** @param {NS} ns */
 async function attackServer(ns, server) {
   while (true) {
-      // ns.print(`Tick for server: ${server}...`);
-      await prepareServer(ns, server);
-      await ns.sleep(1000); // Sleep before restarting the cycle for this server
-    }
+    // ns.print(`Tick for server: ${server}...`);
+    await prepareServer(ns, server);
+    await ns.sleep(1000); // Sleep before restarting the cycle for this server
+  }
 }
 
 /** @param {NS} ns */
 async function prepareServer(ns, server) {
   const data = await analyzeServer(ns, server);
-  const c = new Cluster()
+  const c = new Cluster();
 
   if (data.additionalSecurity >= 3) {
     ns.print(`Would like to weaken ${server}. ${data.prettyWeaken}`);
-    await c.distribute(ns, SCRIPTS.WEAKEN, data.weakenThreadsNeeded, server)
-    await ns.sleep(data.currentWeakenTime)
-    return false
-  }
-  else if (data.moneyBalancePercentage <= 95) {
-    ns.print(`Would like to grow ${server}. ${data.prettyGrow}`)
-    await c.distribute(ns, SCRIPTS.GROW, data.growThreadsNeeded, server)
-    await ns.sleep(data.currentGrowTime)
-    return false
-  }
-  else {
-    ns.print(`Would like to hack ${server}. ${data.prettyHack}`)
-    const threadsForHalfBalance = Math.floor(data.hackThreadsNeeded / 2)
-    await c.distribute(ns, SCRIPTS.HACK, threadsForHalfBalance, server)
-    await ns.sleep(data.currentHackTime)
-    return true
+    await c.distribute(ns, SCRIPTS.WEAKEN, data.weakenThreadsNeeded, server);
+    await ns.sleep(data.currentWeakenTime);
+    return false;
+  } else if (data.moneyBalancePercentage <= 95) {
+    ns.print(`Would like to grow ${server}. ${data.prettyGrow}`);
+    await c.distribute(ns, SCRIPTS.GROW, data.growThreadsNeeded, server);
+    await ns.sleep(data.currentGrowTime);
+    return false;
+  } else {
+    ns.print(`Would like to hack ${server}. ${data.prettyHack}`);
+    const threadsForHalfBalance = Math.floor(data.hackThreadsNeeded / 2);
+    await c.distribute(ns, SCRIPTS.HACK, threadsForHalfBalance, server);
+    await ns.sleep(data.currentHackTime);
+    return true;
   }
 }
 
@@ -97,30 +100,53 @@ async function analyzeServer(ns, server) {
   const maxMoney = ns.getServerMaxMoney(server);
   const currentHackTime = ns.getHackTime(server);
   const currentGrowTime = ns.getGrowTime(server);
-  const moneyBalancePercentage = (currentMoney / maxMoney * 100).toFixed(2)
+  const moneyBalancePercentage = ((currentMoney / maxMoney) * 100).toFixed(2);
 
   // Security
   const currentSecurity = ns.getServerSecurityLevel(server);
   const minSecurity = ns.getServerMinSecurityLevel(server);
   const currentWeakenTime = ns.getWeakenTime(server);
-  const additionalSecurity = currentSecurity - minSecurity
+  const additionalSecurity = currentSecurity - minSecurity;
 
   // Threads
-  const hackThreadsNeeded = Math.ceil(ns.hackAnalyzeThreads(server, currentMoney))
-  const growThreadsNeeded = Math.ceil(ns.growthAnalyze(server, maxMoney / currentMoney))
-  const weakenThreadsNeeded = Math.ceil((currentSecurity - minSecurity) * 20)
+  const hackThreadsNeeded = Math.ceil(
+    ns.hackAnalyzeThreads(server, currentMoney),
+  );
+  const growThreadsNeeded = Math.ceil(
+    ns.growthAnalyze(server, maxMoney / currentMoney),
+  );
+  const weakenThreadsNeeded = Math.ceil((currentSecurity - minSecurity) * 20);
 
-
-  const prettyCash = `${ns.nFormat(currentMoney, "$0.0a")} / ${ns.nFormat(maxMoney, "$0.0a")} (${moneyBalancePercentage}%)`
-  const prettyHack = `${ns.tFormat(currentHackTime)} (t=${hackThreadsNeeded})`
-  const prettyGrow = `${ns.tFormat(currentGrowTime)} (t=${growThreadsNeeded})`
-  const prettyWeaken = `${ns.tFormat(currentWeakenTime)} (t=${weakenThreadsNeeded})`
-  const prettySecurity = `${minSecurity} / ${currentSecurity} (Δ ${additionalSecurity})`
-  ns.print(`${server}: ${prettyCash}, Grow ${prettyGrow}, Hack ${prettyHack}, Weaken ${prettyWeaken}, Security ${prettySecurity}`)
-  return { currentWeakenTime, currentGrowTime, currentHackTime, hackThreadsNeeded, growThreadsNeeded, weakenThreadsNeeded, additionalSecurity, moneyBalancePercentage, prettyHack, prettyWeaken, prettySecurity, prettyGrow}
+  const prettyCash = `${ns.nFormat(currentMoney, "$0.0a")} / ${ns.nFormat(
+    maxMoney,
+    "$0.0a",
+  )} (${moneyBalancePercentage}%)`;
+  const prettyHack = `${ns.tFormat(currentHackTime)} (t=${hackThreadsNeeded})`;
+  const prettyGrow = `${ns.tFormat(currentGrowTime)} (t=${growThreadsNeeded})`;
+  const prettyWeaken = `${ns.tFormat(
+    currentWeakenTime,
+  )} (t=${weakenThreadsNeeded})`;
+  const prettySecurity = `${minSecurity} / ${currentSecurity} (Δ ${additionalSecurity})`;
+  ns.print(
+    `${server}: ${prettyCash}, Grow ${prettyGrow}, Hack ${prettyHack}, Weaken ${prettyWeaken}, Security ${prettySecurity}`,
+  );
+  return {
+    currentWeakenTime,
+    currentGrowTime,
+    currentHackTime,
+    hackThreadsNeeded,
+    growThreadsNeeded,
+    weakenThreadsNeeded,
+    additionalSecurity,
+    moneyBalancePercentage,
+    prettyHack,
+    prettyWeaken,
+    prettySecurity,
+    prettyGrow,
+  };
 }
 class Cluster {
-  getAvailableThreads(ns, script)  {
+  getAvailableThreads(ns, script) {
     const scriptRam = ns.getScriptRam(script);
     let totalThreads = 0;
     const allServers = getUsableServers(ns);
@@ -135,15 +161,17 @@ class Cluster {
 
   async distribute(ns, script, desiredThreads, ...args) {
     const allServers = getUsableServers(ns).reverse();
-    const availableClusterThreads = this.getAvailableThreads(ns, script)
+    const availableClusterThreads = this.getAvailableThreads(ns, script);
 
     if (availableClusterThreads == 0) {
-      ns.print(`Cluster has no more resources to distribute ${script}`)
+      ns.print(`Cluster has no more resources to distribute ${script}`);
     }
 
     let threadsToAllocate = Math.min(desiredThreads, availableClusterThreads);
     if (threadsToAllocate != desiredThreads) {
-      ns.print(`Requested to allocate ${desiredThreads} within the cluster but only ${threadsToAllocate} are available`)
+      ns.print(
+        `Requested to allocate ${desiredThreads} within the cluster but only ${threadsToAllocate} are available`,
+      );
     }
     for (const server of allServers) {
       const serverRam = ns.getServerMaxRam(server);
@@ -151,19 +179,22 @@ class Cluster {
       const scriptRam = ns.getScriptRam(script);
       const threadsOnServer = Math.floor((serverRam - usedRam) / scriptRam);
 
-      const threadsAllocatableOnServer =  Math.min(threadsOnServer, threadsToAllocate);
+      const threadsAllocatableOnServer = Math.min(
+        threadsOnServer,
+        threadsToAllocate,
+      );
       if (threadsAllocatableOnServer <= 0) {
         continue;
       }
       if (!ns.fileExists(script, server)) {
-          ns.scp(script, server);
+        ns.scp(script, server);
       }
       ns.exec(script, server, threadsAllocatableOnServer, ...args);
       threadsToAllocate -= threadsAllocatableOnServer;
-      ns.print(`Started ${script} on ${server} with t=${threadsAllocatableOnServer}`);
+      ns.print(
+        `Started ${script} on ${server} with t=${threadsAllocatableOnServer}`,
+      );
     }
-
-
   }
 }
 // TODO: Retrieve current cluster state. Eg scan procs on servers and tally the process and threads
