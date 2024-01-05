@@ -1,9 +1,9 @@
 /** @param {NS} ns **/
 export async function main(ns) {
-  const [target, port, jobID] = ns.args;
+  const [target, port, jobID, threads] = ns.args;
 
-  const COMPLETED = `${jobID}#COMPLETE`;
-  const STARTED = `${jobID}#STARTED`;
+  const COMPLETED = `${jobID}#COMPLETE#${threads}`;
+  const STARTED = `${jobID}#STARTED#${threads}`;
 
   ns.tryWritePort(port, STARTED);
   ns.print(STARTED)

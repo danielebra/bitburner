@@ -1,6 +1,7 @@
 // Objective: Maintain 50% of prize pool
 
 import { getUsableServers } from "/code/utils.js";
+// TO BE MOVED TO UTILS
 export class DefaultMap extends Map {
   constructor(defaultVal, ...args) {
     super(...args);
@@ -20,49 +21,115 @@ export class DefaultMap extends Map {
   }
 }
 
+function generateUUID() {
+  let d = new Date().getTime(); //Timestamp
+  let d2 = (performance && performance.now && performance.now() * 1000) || 0; //Time in microseconds since page-load or 0 if unsupported
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    let r = Math.random() * 16; //random number between 0 and 16
+    if (d > 0) {
+      //Use timestamp until depleted
+      r = (d + r) % 16 | 0;
+      d = Math.floor(d / 16);
+    } else {
+      //Use microseconds since page-load if supported
+      r = (d2 + r) % 16 | 0;
+      d2 = Math.floor(d2 / 16);
+    }
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+// END MOVE
+
+// const TARGETS = new DefaultMap(() => ({
+//   isActive: null,
+//   jobID: null,
+//   jobStartTime: null,
+//   jobExpectedCompletionTime: null,
+// }));
+const TARGETS = {};
+
 const SCRIPTS = {
   WEAKEN: "/code/farm/weaken.js",
   GROW: "/code/farm/grow.js",
   HACK: "/code/farm/hack.js",
 };
+
+const PORT = 7;
+
+async function getTargetData(target) {
+  if (!TARGETS[target]) {
+    TARGETS[target] = {
+      isActive: false,
+      jobID: null,
+      jobStartTime: null,
+      jobExpectedCompletionTime: null,
+      runningThreads: 0,
+    };
+  }
+  return TARGETS[target];
+}
+
 /** @param {NS} ns */
 export async function main(ns) {
   ns.tail();
   ns.disableLog("ALL");
   // const target = ns.args[0]
   const servers = [
-    // "iron-gym",
+    "iron-gym",
     "n00dles",
-    // "hong-fang-tea",
-    // "nectar-net",
-    // "zer0",
-    // "phantasy",
-    // "omega-net",
-    // "neo-net",
-    // "silver-helix",
-    // "johnson-ortho",
-    // "crush-fitness",
-    // "harakiri-sushi",
+    "hong-fang-tea",
+    "nectar-net",
+    "zer0",
+    "phantasy",
+    "omega-net",
+    "neo-net",
+    "silver-helix",
+    "johnson-ortho",
+    "crush-fitness",
+    "harakiri-sushi",
     "foodnstuff",
-    // "joesguns",
-    // "max-hardware",
-    // "sigma-cosmetics",
+    "joesguns",
+    "max-hardware",
+    "sigma-cosmetics",
   ];
-  // servers.forEach((server) => prepareServer(ns, server));
-  // while ( true ) {
-  //   ns.print("Tick...")
-  //   await prepareServer(ns, target)
-  //   await ns.sleep(1000)
+  for (var i = 0; i != servers.length; i++) {
+    await getTargetData(servers[i]);
+  }
+  ns.print(Object.keys(TARGETS));
+  while (true) {
+    // Process messages from port
+    if (!ns.peek(PORT).startsWith("NULL")) {
+      const message = ns.readPort(PORT);
+      const [jobID, status, threads] = message.split("#");
 
-  // }
-  // await attackServer(ns, "n00dles")
-  await Promise.all(servers.map((server) => attackServer(ns, server)));
+      // Update TARGETS based on the message
+      Object.keys(TARGETS).forEach((target) => {
+        if (TARGETS[target].jobID == jobID && status == "COMPLETE") {
+          TARGETS[target].runningThreads -= threads;
+          ns.print(
+            `Updating job ${jobID} on target ${target}: t=${threads} reached ${status}. ${TARGETS[target].runningThreads} remaining`,
+          );
+          if (TARGETS[target].runningThreads <= 0) {
+            TARGETS[target].isActive = false;
+          }
+        }
+      });
+    }
+
+    for (const target of Object.keys(TARGETS)) {
+      if (TARGETS[target].isActive === false) {
+        await prepareServer(ns, target);
+      }
+    }
+
+    await ns.sleep(100);
+  }
 }
 
 /** @param {NS} ns */
 async function attackServer(ns, server) {
   while (true) {
-    // ns.print(`Tick for server: ${server}...`);
+    ns.print(`Tick for server: ${server}...`);
     await prepareServer(ns, server);
     await ns.sleep(1000); // Sleep before restarting the cycle for this server
   }
@@ -72,24 +139,31 @@ async function attackServer(ns, server) {
 async function prepareServer(ns, server) {
   const data = await analyzeServer(ns, server);
   const c = new Cluster();
+  const jobID = generateUUID();
+
+  let scriptToUse;
+  let threadsToUse;
 
   if (data.additionalSecurity >= 3) {
     ns.print(`Would like to weaken ${server}. ${data.prettyWeaken}`);
-    await c.distribute(ns, SCRIPTS.WEAKEN, data.weakenThreadsNeeded, server);
-    await ns.sleep(data.currentWeakenTime);
-    return false;
+    scriptToUse = SCRIPTS.WEAKEN;
+    threadsToUse = data.weakenThreadsNeeded;
   } else if (data.moneyBalancePercentage <= 95) {
     ns.print(`Would like to grow ${server}. ${data.prettyGrow}`);
-    await c.distribute(ns, SCRIPTS.GROW, data.growThreadsNeeded, server);
-    await ns.sleep(data.currentGrowTime);
-    return false;
+    scriptToUse = SCRIPTS.GROW;
+    threadsToUse = data.growThreadsNeeded;
   } else {
     ns.print(`Would like to hack ${server}. ${data.prettyHack}`);
     const threadsForHalfBalance = Math.floor(data.hackThreadsNeeded / 2);
-    await c.distribute(ns, SCRIPTS.HACK, threadsForHalfBalance, server);
-    await ns.sleep(data.currentHackTime);
-    return true;
+    scriptToUse = SCRIPTS.HACK;
+    threadsToUse = threadsForHalfBalance;
   }
+  TARGETS[server].isActive = true;
+  TARGETS[server].jobID = jobID;
+  // NOTE: This is naive and doesn't consider the fact that these threads have been allocated and even exist in the cluster
+  TARGETS[server].runningThreads = threadsToUse;
+
+  await c.distribute(ns, scriptToUse, threadsToUse, server, PORT, jobID);
 }
 
 /** @param {NS} ns */
@@ -126,7 +200,9 @@ async function analyzeServer(ns, server) {
   const prettyWeaken = `${ns.tFormat(
     currentWeakenTime,
   )} (t=${weakenThreadsNeeded})`;
-  const prettySecurity = `${minSecurity} / ${currentSecurity} (Δ ${additionalSecurity})`;
+  const prettySecurity = `${minSecurity} / ${currentSecurity.toFixed(
+    2,
+  )} (Δ ${additionalSecurity.toFixed(2)})`;
   ns.print(
     `${server}: ${prettyCash}, Grow ${prettyGrow}, Hack ${prettyHack}, Weaken ${prettyWeaken}, Security ${prettySecurity}`,
   );
@@ -150,6 +226,7 @@ class Cluster {
     const scriptRam = ns.getScriptRam(script);
     let totalThreads = 0;
     const allServers = getUsableServers(ns);
+    // const allServers = ["node-32_768"]; // getUsableServers(ns);
 
     for (const server of allServers) {
       const serverRam = ns.getServerMaxRam(server);
@@ -161,6 +238,7 @@ class Cluster {
 
   async distribute(ns, script, desiredThreads, ...args) {
     const allServers = getUsableServers(ns).reverse();
+    // const allServers = ["node-32_768"]; // getUsableServers(ns).reverse();
     const availableClusterThreads = this.getAvailableThreads(ns, script);
 
     if (availableClusterThreads == 0) {
@@ -186,13 +264,20 @@ class Cluster {
       if (threadsAllocatableOnServer <= 0) {
         continue;
       }
-      if (!ns.fileExists(script, server)) {
-        ns.scp(script, server);
-      }
-      ns.exec(script, server, threadsAllocatableOnServer, ...args);
+      // if (!ns.fileExists(script, server)) {
+      //   ns.scp(script, server);
+      // }
+      ns.scp(script, server);
+      ns.exec(
+        script,
+        server,
+        threadsAllocatableOnServer,
+        ...args,
+        threadsAllocatableOnServer,
+      );
       threadsToAllocate -= threadsAllocatableOnServer;
       ns.print(
-        `Started ${script} on ${server} with t=${threadsAllocatableOnServer}`,
+        `   -> Started ${script} on ${server} with t=${threadsAllocatableOnServer}`,
       );
     }
   }
