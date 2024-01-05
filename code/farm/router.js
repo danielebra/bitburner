@@ -1,6 +1,6 @@
 // Objective: Maintain 50% of prize pool
 
-import { getUsableServers } from "/code/utils.js";
+import { getUsableServersEnriched } from "/code/utils.js";
 // TO BE MOVED TO UTILS
 export class DefaultMap extends Map {
   constructor(defaultVal, ...args) {
@@ -54,8 +54,8 @@ const SCRIPTS = {
   HACK: "/code/farm/hack.js",
 };
 
-const PORT = 7;
-
+const PORT = 10;
+ 
 async function getTargetData(target) {
   if (!TARGETS[target]) {
     TARGETS[target] = {
@@ -75,22 +75,23 @@ export async function main(ns) {
   ns.disableLog("ALL");
   // const target = ns.args[0]
   const servers = [
-    "iron-gym",
+    // "iron-gym",
     "n00dles",
-    "hong-fang-tea",
-    "nectar-net",
-    "zer0",
-    "phantasy",
-    "omega-net",
-    "neo-net",
-    "silver-helix",
-    "johnson-ortho",
-    "crush-fitness",
-    "harakiri-sushi",
-    "foodnstuff",
-    "joesguns",
-    "max-hardware",
-    "sigma-cosmetics",
+    // "hong-fang-tea",
+    // "nectar-net",
+    // "zer0",
+    // "phantasy",
+    // "omega-net",
+    // "neo-net",
+    // "silver-helix",
+    // "johnson-ortho",
+    // "crush-fitness",
+    // "harakiri-sushi",
+    // "foodnstuff",
+    // "joesguns",
+    // "max-hardware",
+    // "sigma-cosmetics",
+    // "the-hub"
   ];
   for (var i = 0; i != servers.length; i++) {
     await getTargetData(servers[i]);
@@ -107,7 +108,7 @@ export async function main(ns) {
         if (TARGETS[target].jobID == jobID && status == "COMPLETE") {
           TARGETS[target].runningThreads -= threads;
           ns.print(
-            `Updating job ${jobID} on target ${target}: t=${threads} reached ${status}. ${TARGETS[target].runningThreads} remaining`,
+            `ⓘ  Updating job ${jobID} on target ${target}: t=${threads} reached ${status}. ${TARGETS[target].runningThreads} remaining`,
           );
           if (TARGETS[target].runningThreads <= 0) {
             TARGETS[target].isActive = false;
@@ -144,19 +145,20 @@ async function prepareServer(ns, server) {
   let scriptToUse;
   let threadsToUse;
 
-  if (data.additionalSecurity >= 3) {
-    ns.print(`Would like to weaken ${server}. ${data.prettyWeaken}`);
+  if (data.additionalSecurity >= 5) {
+    ns.print(`  • Would like to weaken ${server}. ${data.prettyWeaken}`);
     scriptToUse = SCRIPTS.WEAKEN;
     threadsToUse = data.weakenThreadsNeeded;
   } else if (data.moneyBalancePercentage <= 95) {
-    ns.print(`Would like to grow ${server}. ${data.prettyGrow}`);
+    ns.print(`  • Would like to grow ${server}. ${data.prettyGrow}`);
     scriptToUse = SCRIPTS.GROW;
     threadsToUse = data.growThreadsNeeded;
   } else {
-    ns.print(`Would like to hack ${server}. ${data.prettyHack}`);
+    ns.print(`  • Would like to hack ${server}. ${data.prettyHack}`);
     const threadsForHalfBalance = Math.floor(data.hackThreadsNeeded / 2);
+    const threadsForQuarterBalance = Math.floor(data.hackThreadsNeeded * 0.70);
     scriptToUse = SCRIPTS.HACK;
-    threadsToUse = threadsForHalfBalance;
+    threadsToUse = threadsForQuarterBalance;
   }
   TARGETS[server].isActive = true;
   TARGETS[server].jobID = jobID;
@@ -204,7 +206,7 @@ async function analyzeServer(ns, server) {
     2,
   )} (Δ ${additionalSecurity.toFixed(2)})`;
   ns.print(
-    `${server}: ${prettyCash}, Grow ${prettyGrow}, Hack ${prettyHack}, Weaken ${prettyWeaken}, Security ${prettySecurity}`,
+    `🧪${server}: ${prettyCash}, Grow ${prettyGrow}, Hack ${prettyHack}, Weaken ${prettyWeaken}, Security ${prettySecurity}`,
   );
   return {
     currentWeakenTime,
@@ -225,20 +227,16 @@ class Cluster {
   getAvailableThreads(ns, script) {
     const scriptRam = ns.getScriptRam(script);
     let totalThreads = 0;
-    const allServers = getUsableServers(ns);
-    // const allServers = ["node-32_768"]; // getUsableServers(ns);
+    const allServers = getUsableServersEnriched(ns);
 
     for (const server of allServers) {
-      const serverRam = ns.getServerMaxRam(server);
-      const usedRam = ns.getServerUsedRam(server);
-      totalThreads += Math.floor((serverRam - usedRam) / scriptRam);
+      totalThreads += Math.floor(server.availableMemory / scriptRam);
     }
     return totalThreads;
   }
 
   async distribute(ns, script, desiredThreads, ...args) {
-    const allServers = getUsableServers(ns).reverse();
-    // const allServers = ["node-32_768"]; // getUsableServers(ns).reverse();
+    const allServers = getUsableServersEnriched(ns).sort((a,b) => b.availableMemory - a.availableMemory);
     const availableClusterThreads = this.getAvailableThreads(ns, script);
 
     if (availableClusterThreads == 0) {
@@ -252,10 +250,8 @@ class Cluster {
       );
     }
     for (const server of allServers) {
-      const serverRam = ns.getServerMaxRam(server);
-      const usedRam = ns.getServerUsedRam(server);
       const scriptRam = ns.getScriptRam(script);
-      const threadsOnServer = Math.floor((serverRam - usedRam) / scriptRam);
+      const threadsOnServer = Math.floor(server.availableMemory/ scriptRam);
 
       const threadsAllocatableOnServer = Math.min(
         threadsOnServer,
@@ -267,17 +263,17 @@ class Cluster {
       // if (!ns.fileExists(script, server)) {
       //   ns.scp(script, server);
       // }
-      ns.scp(script, server);
+      ns.scp(script, server.name);
       ns.exec(
         script,
-        server,
+        server.name,
         threadsAllocatableOnServer,
         ...args,
         threadsAllocatableOnServer,
       );
       threadsToAllocate -= threadsAllocatableOnServer;
       ns.print(
-        `   -> Started ${script} on ${server} with t=${threadsAllocatableOnServer}`,
+        `     → Started ${script} on ${server.name} with t=${threadsAllocatableOnServer}`,
       );
     }
   }
