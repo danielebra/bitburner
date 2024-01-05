@@ -57,7 +57,7 @@ async function gainRootAccess(ns, server) {
     // Use available hacking scripts to open ports
     if (ns.fileExists("BruteSSH.exe", "home")) ns.brutessh(server);
     if (ns.fileExists("FTPCrack.exe", "home")) ns.ftpcrack(server);
-    if (ns.fileExists("relaySMPT.exe", "home")) ns.ftpcrack(server);
+    if (ns.fileExists("relaySMTP.exe", "home")) ns.ftpcrack(server);
     // Add more scripts as required
 
     ns.nuke(server); // Gain root access
