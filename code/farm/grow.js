@@ -5,7 +5,7 @@ export async function main(ns) {
   const COMPLETED = `${jobID}#COMPLETE#${threads}`;
   const STARTED = `${jobID}#STARTED#${threads}`;
 
-  ns.tryWritePort(port, STARTED);
+  // ns.tryWritePort(port, STARTED);
   ns.print(STARTED)
 
   await ns.grow(target);
