@@ -1,4 +1,5 @@
 import { getUsableServers } from '/code/utils.js'
+/** @param {NS} ns */
 export async function main(ns) {
   ns.disableLog('ALL')
   let servers = getUsableServers(ns);
@@ -11,11 +12,16 @@ export async function main(ns) {
         const maxMoney = ns.getServerMaxMoney(server);
         const currentMoney = ns.getServerMoneyAvailable(server);
         const percentageFilled = maxMoney > 0 ? (currentMoney / maxMoney) * 100 : 0;
+        const usedMemory= ns.getServerUsedRam(server)
+        const totalMemory= ns.getServerMaxRam(server)
         return {
             name: server,
             currentMoney: currentMoney,
             maxMoney: maxMoney,
-            percentageFilled: percentageFilled
+            percentageFilled: percentageFilled,
+            usedMemory: usedMemory,
+            totalMemory: totalMemory,
+            availableMemory:  totalMemory - usedMemory,
         };
     });
 
