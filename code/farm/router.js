@@ -1,5 +1,20 @@
 // Objective: Maintain 50% of prize pool
-import { getUsableServers } from "/code/utils.js";
+
+import { getUsableServers  } from "/code/utils.js";
+export class DefaultMap extends Map {
+    constructor(defaultVal, ...args) {
+        super(...args);
+        this.defaultVal = defaultVal;
+    }
+
+    get(key) {
+        if (!this.has(key)) {
+            this.set(key, typeof this.defaultVal === 'function' ? new this.defaultVal() : this.defaultVal);
+        }
+        return super.get(key);
+    }
+}
+
 const SCRIPTS = {
   WEAKEN: "/code/farm/weaken.js",
   GROW: "/code/farm/grow.js",
@@ -9,10 +24,10 @@ const SCRIPTS = {
 export async function main(ns) {
   ns.tail();
   ns.disableLog("ALL");
-  const target = ns.args[0]
+  // const target = ns.args[0]
   const servers = [
     // "iron-gym",
-    // "n00dles",
+    "n00dles",
     // "hong-fang-tea",
     // "nectar-net",
     // "zer0",
@@ -23,50 +38,52 @@ export async function main(ns) {
     // "johnson-ortho",
     // "crush-fitness",
     // "harakiri-sushi",
-    // "foodnstuff",
+    "foodnstuff",
     // "joesguns",
     // "max-hardware",
     // "sigma-cosmetics",
   ];
   // servers.forEach((server) => prepareServer(ns, server));
-  while ( true ) {
-    ns.print("Tick...")
-    await prepareServer(ns, target)
-    await ns.sleep(1000)
+  // while ( true ) {
+  //   ns.print("Tick...")
+  //   await prepareServer(ns, target)
+  //   await ns.sleep(1000)
 
-  }
-  // attackServer(ns, "iron-gym");
+  // }
+  // await attackServer(ns, "n00dles")
+  await Promise.all(servers.map(server => attackServer(ns, server)))
 }
 
 /** @param {NS} ns */
-/** @param {string} server */
 async function attackServer(ns, server) {
-  const data = await analyzeServer(ns, server);
-
+  while (true) {
+      // ns.print(`Tick for server: ${server}...`);
+      await prepareServer(ns, server);
+      await ns.sleep(1000); // Sleep before restarting the cycle for this server
+    }
 }
 
 /** @param {NS} ns */
-/** @param {string} server */
 async function prepareServer(ns, server) {
   const data = await analyzeServer(ns, server);
   const c = new Cluster()
 
   if (data.additionalSecurity >= 3) {
     ns.print(`Would like to weaken ${server}. ${data.prettyWeaken}`);
-    c.distribute(ns, SCRIPTS.WEAKEN, data.weakenThreadsNeeded, server)
+    await c.distribute(ns, SCRIPTS.WEAKEN, data.weakenThreadsNeeded, server)
     await ns.sleep(data.currentWeakenTime)
     return false
   }
   else if (data.moneyBalancePercentage <= 95) {
     ns.print(`Would like to grow ${server}. ${data.prettyGrow}`)
-    c.distribute(ns, SCRIPTS.GROW, data.growThreadsNeeded, server)
+    await c.distribute(ns, SCRIPTS.GROW, data.growThreadsNeeded, server)
     await ns.sleep(data.currentGrowTime)
     return false
   }
   else {
     ns.print(`Would like to hack ${server}. ${data.prettyHack}`)
     const threadsForHalfBalance = Math.floor(data.hackThreadsNeeded / 2)
-    c.distribute(ns, SCRIPTS.HACK, threadsForHalfBalance, server)
+    await c.distribute(ns, SCRIPTS.HACK, threadsForHalfBalance, server)
     await ns.sleep(data.currentHackTime)
     return true
   }
@@ -116,7 +133,7 @@ class Cluster {
     return totalThreads;
   }
 
-  distribute(ns, script, desiredThreads, ...args) {
+  async distribute(ns, script, desiredThreads, ...args) {
     const allServers = getUsableServers(ns).reverse();
     const availableClusterThreads = this.getAvailableThreads(ns, script)
 
