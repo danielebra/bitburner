@@ -46,7 +46,7 @@ function generateUUID() {
 //   jobStartTime: null,
 //   jobExpectedCompletionTime: null,
 // }));
-const TARGETS = {};
+let TARGETS = {};
 
 const SCRIPTS = {
   WEAKEN: "/code/farm/weaken.js",
@@ -54,8 +54,7 @@ const SCRIPTS = {
   HACK: "/code/farm/hack.js",
 };
 
-const PORT = 10;
- 
+const PORT = 12;
 async function getTargetData(target) {
   if (!TARGETS[target]) {
     TARGETS[target] = {
@@ -64,6 +63,7 @@ async function getTargetData(target) {
       jobStartTime: null,
       jobExpectedCompletionTime: null,
       runningThreads: 0,
+      requestedThreads: 0,
     };
   }
   return TARGETS[target];
@@ -71,36 +71,43 @@ async function getTargetData(target) {
 
 /** @param {NS} ns */
 export async function main(ns) {
+  TARGETS = {};
   ns.tail();
   ns.disableLog("ALL");
   // const target = ns.args[0]
-  const servers = [
-    // "iron-gym",
-    "n00dles",
-    // "hong-fang-tea",
-    // "nectar-net",
-    // "zer0",
-    // "phantasy",
-    // "omega-net",
-    // "neo-net",
-    // "silver-helix",
-    // "johnson-ortho",
-    // "crush-fitness",
-    // "harakiri-sushi",
-    // "foodnstuff",
-    // "joesguns",
-    // "max-hardware",
-    // "sigma-cosmetics",
-    // "the-hub"
-  ];
-  for (var i = 0; i != servers.length; i++) {
-    await getTargetData(servers[i]);
-  }
-  ns.print(Object.keys(TARGETS));
+  // const servers = [
+  //   "iron-gym",
+  //   "n00dles",
+  //   "hong-fang-tea",
+  //   "nectar-net",
+  //   "zer0",
+  //   "phantasy",
+  //   "omega-net",
+  //   "neo-net",
+  //   "silver-helix",
+  //   "johnson-ortho",
+  //   "crush-fitness",
+  //   "harakiri-sushi",
+  //   "foodnstuff",
+  //   "joesguns",
+  //   "max-hardware",
+  //   "sigma-cosmetics",
+  //   "the-hub"
+  // ];
   while (true) {
+    const servers = getUsableServersEnriched(ns).filter(
+      (x) => x.hackable && x.maxMoney > 0,
+    ).map(info => info.name);
+    if (Object.keys(TARGETS).length != Object.keys(servers).length) {
+      for (var i = 0; i != servers.length; i++) {
+        await getTargetData(servers[i]);
+      }
+      ns.print("INFO", Object.keys(TARGETS));
+    }
     // Process messages from port
     if (!ns.peek(PORT).startsWith("NULL")) {
       const message = ns.readPort(PORT);
+      // ns.print(`Message received: ${message}`)
       const [jobID, status, threads] = message.split("#");
 
       // Update TARGETS based on the message
@@ -123,7 +130,8 @@ export async function main(ns) {
       }
     }
 
-    await ns.sleep(100);
+    // ns.print("INFO", TARGETS)
+    await ns.sleep(500);
   }
 }
 
@@ -149,14 +157,14 @@ async function prepareServer(ns, server) {
     ns.print(`  • Would like to weaken ${server}. ${data.prettyWeaken}`);
     scriptToUse = SCRIPTS.WEAKEN;
     threadsToUse = data.weakenThreadsNeeded;
-  } else if (data.moneyBalancePercentage <= 95) {
+  } else if (data.moneyBalancePercentage <= 90) {
     ns.print(`  • Would like to grow ${server}. ${data.prettyGrow}`);
     scriptToUse = SCRIPTS.GROW;
     threadsToUse = data.growThreadsNeeded;
   } else {
     ns.print(`  • Would like to hack ${server}. ${data.prettyHack}`);
     const threadsForHalfBalance = Math.floor(data.hackThreadsNeeded / 2);
-    const threadsForQuarterBalance = Math.floor(data.hackThreadsNeeded * 0.70);
+    const threadsForQuarterBalance = Math.floor(data.hackThreadsNeeded * 0.55);
     scriptToUse = SCRIPTS.HACK;
     threadsToUse = threadsForQuarterBalance;
   }
@@ -164,6 +172,7 @@ async function prepareServer(ns, server) {
   TARGETS[server].jobID = jobID;
   // NOTE: This is naive and doesn't consider the fact that these threads have been allocated and even exist in the cluster
   TARGETS[server].runningThreads = threadsToUse;
+  TARGETS[server].requestedThreads = threadsToUse;
 
   await c.distribute(ns, scriptToUse, threadsToUse, server, PORT, jobID);
 }
@@ -236,7 +245,9 @@ class Cluster {
   }
 
   async distribute(ns, script, desiredThreads, ...args) {
-    const allServers = getUsableServersEnriched(ns).sort((a,b) => b.availableMemory - a.availableMemory);
+    const allServers = getUsableServersEnriched(ns).sort(
+      (a, b) => b.availableMemory - a.availableMemory,
+    );
     const availableClusterThreads = this.getAvailableThreads(ns, script);
 
     if (availableClusterThreads == 0) {
@@ -251,7 +262,7 @@ class Cluster {
     }
     for (const server of allServers) {
       const scriptRam = ns.getScriptRam(script);
-      const threadsOnServer = Math.floor(server.availableMemory/ scriptRam);
+      const threadsOnServer = Math.floor(server.availableMemory / scriptRam);
 
       const threadsAllocatableOnServer = Math.min(
         threadsOnServer,
