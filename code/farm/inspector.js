@@ -1,5 +1,5 @@
 /** @param {NS} ns */
-export async function analyzeServer(ns, server) {
+export async function analyzeServer(ns, server, logState = true) {
   // Money
   const currentMoney = ns.getServerMoneyAvailable(server);
   const maxMoney = ns.getServerMaxMoney(server);
@@ -14,12 +14,8 @@ export async function analyzeServer(ns, server) {
   const additionalSecurity = currentSecurity - minSecurity;
 
   // Threads
-  const hackThreadsNeeded = Math.ceil(
-    ns.hackAnalyzeThreads(server, currentMoney),
-  );
-  const growThreadsNeeded = Math.ceil(
-    ns.growthAnalyze(server, maxMoney / currentMoney),
-  );
+  const hackThreadsNeeded = Math.ceil(ns.hackAnalyzeThreads(server, currentMoney));
+  const growThreadsNeeded = Math.ceil(ns.growthAnalyze(server, maxMoney / currentMoney));
   const weakenThreadsNeeded = Math.ceil((currentSecurity - minSecurity) * 20);
 
   const prettyCash = `${ns.nFormat(currentMoney, "$0.0a")} / ${ns.nFormat(
@@ -28,15 +24,13 @@ export async function analyzeServer(ns, server) {
   )} (${moneyBalancePercentage}%)`;
   const prettyHack = `${ns.tFormat(currentHackTime)} (t=${hackThreadsNeeded})`;
   const prettyGrow = `${ns.tFormat(currentGrowTime)} (t=${growThreadsNeeded})`;
-  const prettyWeaken = `${ns.tFormat(
-    currentWeakenTime,
-  )} (t=${weakenThreadsNeeded})`;
-  const prettySecurity = `${minSecurity} / ${currentSecurity.toFixed(
-    2,
-  )} (Δ ${additionalSecurity.toFixed(2)})`;
-  ns.print(
-    `🧪${server}: ${prettyCash}, Grow ${prettyGrow}, Hack ${prettyHack}, Weaken ${prettyWeaken}, Security ${prettySecurity}`,
-  );
+  const prettyWeaken = `${ns.tFormat(currentWeakenTime)} (t=${weakenThreadsNeeded})`;
+  const prettySecurity = `${minSecurity} / ${currentSecurity.toFixed(2)} (Δ ${additionalSecurity.toFixed(2)})`;
+  if (logState) {
+    ns.print(
+      `🧪${server}: ${prettyCash}, Grow ${prettyGrow}, Hack ${prettyHack}, Weaken ${prettyWeaken}, Security ${prettySecurity}`,
+    );
+  }
   return {
     currentWeakenTime,
     currentGrowTime,
@@ -52,4 +46,3 @@ export async function analyzeServer(ns, server) {
     prettyGrow,
   };
 }
-
