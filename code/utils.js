@@ -26,7 +26,9 @@ export function getUsableServers(ns) {
   return servers.filter((server) => server != "home");
 }
 
+/** @param {NS} ns */
 export function getUsableServersEnriched(ns) {
+  const currentHackingLevel = ns.getHackingLevel()
   return getUsableServers(ns).map((server) => {
     const maxMoney = ns.getServerMaxMoney(server);
     const currentMoney = ns.getServerMoneyAvailable(server);
@@ -41,6 +43,7 @@ export function getUsableServersEnriched(ns) {
       usedMemory: usedMemory,
       totalMemory: totalMemory,
       availableMemory: totalMemory - usedMemory,
+      hackable: currentHackingLevel > ns.getServerRequiredHackingLevel(server)
     };
   });
 }

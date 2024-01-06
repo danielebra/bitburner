@@ -18,6 +18,7 @@ export async function main(ns) {
     }
 }
 
+/** @param {NS} ns **/
 function discoverServers(ns) {
     let discoveredServers = ['home']; // Start with 'home'
     let toScan = ['home']; // Queue of servers to scan
@@ -36,11 +37,12 @@ function discoverServers(ns) {
     return discoveredServers;
 }
 
+/** @param {NS} ns **/
 function canHackServer(ns, server) {
     // Check if your hacking level is high enough
-    if (ns.getHackingLevel() < ns.getServerRequiredHackingLevel(server)) {
-        return false;
-    }
+    // if (ns.getHackingLevel() < ns.getServerRequiredHackingLevel(server)) {
+    //     return false;
+    // }
 
     // Count the number of port-opening scripts available
     let portsRequired = ns.getServerNumPortsRequired(server);
@@ -48,16 +50,21 @@ function canHackServer(ns, server) {
     if (ns.fileExists("BruteSSH.exe", "home")) portsAvailable++;
     if (ns.fileExists("FTPCrack.exe", "home")) portsAvailable++;
     if (ns.fileExists("relaySMTP.exe", "home")) portsAvailable++;
+    if (ns.fileExists("HTTPWorm.exe", "home")) portsAvailable++;
+    if (ns.fileExists("SQLInject.exe", "home")) portsAvailable++;
     // Add more checks for other port-opening scripts
 
     return portsAvailable >= portsRequired;
 }
 
+/** @param {NS} ns **/
 async function gainRootAccess(ns, server) {
     // Use available hacking scripts to open ports
     if (ns.fileExists("BruteSSH.exe", "home")) ns.brutessh(server);
     if (ns.fileExists("FTPCrack.exe", "home")) ns.ftpcrack(server);
-    if (ns.fileExists("relaySMTP.exe", "home")) ns.ftpcrack(server);
+    if (ns.fileExists("relaySMTP.exe", "home")) ns.relaysmtp(server);
+    if (ns.fileExists("HTTPWorm.exe", "home")) ns.httpworm(server);
+    if (ns.fileExists("SQLInject.exe", "home")) ns.sqlinject(server);
     // Add more scripts as required
 
     ns.nuke(server); // Gain root access
