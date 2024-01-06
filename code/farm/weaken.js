@@ -10,6 +10,8 @@ export async function main(ns) {
 
   await ns.weaken(target);
 
-  ns.tryWritePort(port, COMPLETED);
+  const published = ns.tryWritePort(port, COMPLETED);
   ns.print(COMPLETED)
+  ns.print(`Port: ${port}`)
+  ns.print(`Pubilshed: ${published}`)
 }
