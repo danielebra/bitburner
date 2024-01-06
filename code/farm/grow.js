@@ -6,12 +6,13 @@ export async function main(ns) {
   const STARTED = `${jobID}#STARTED#${threads}`;
 
   // ns.tryWritePort(port, STARTED);
-  ns.print(STARTED)
+  ns.print(STARTED);
 
   await ns.grow(target);
 
-  const published = ns.tryWritePort(port, COMPLETED);
-  ns.print(COMPLETED)
-  ns.print(`Port: ${port}`)
-  ns.print(`Pubilshed: ${published}`)
+  ns.print(COMPLETED);
+  if (port) {
+    const published = ns.tryWritePort(port, COMPLETED);
+    ns.print(`Pubilshed: ${published} on Port: ${port}`);
+  }
 }
