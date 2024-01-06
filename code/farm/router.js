@@ -105,7 +105,7 @@ async function attackServer(ns, server) {
 /** @param {NS} ns */
 async function prepareServer(ns, server) {
   const data = await analyzeServer(ns, server);
-  const c = new Cluster();
+  const c = new Cluster(ns);
   const jobID = generateUUID();
 
   let scriptToUse;
@@ -132,7 +132,7 @@ async function prepareServer(ns, server) {
   TARGETS[server].runningThreads = threadsToUse;
   TARGETS[server].requestedThreads = threadsToUse;
 
-  await c.distribute(ns, scriptToUse, threadsToUse, server, PORT, jobID);
+  await c.distribute(scriptToUse, threadsToUse, server, PORT, jobID);
 }
 
 /** @param {NS} ns */
