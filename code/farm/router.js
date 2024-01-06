@@ -1,51 +1,9 @@
 // Objective: Maintain 50% of prize pool
 
-import { getUsableServersEnriched } from "/code/utils.js";
-// TO BE MOVED TO UTILS
-export class DefaultMap extends Map {
-  constructor(defaultVal, ...args) {
-    super(...args);
-    this.defaultVal = defaultVal;
-  }
+import { getUsableServersEnriched, generateUUID } from "/code/utils.js";
+import { Cluster } from "/code/farm/cluster.js";
 
-  get(key) {
-    if (!this.has(key)) {
-      this.set(
-        key,
-        typeof this.defaultVal === "function"
-          ? new this.defaultVal()
-          : this.defaultVal,
-      );
-    }
-    return super.get(key);
-  }
-}
 
-function generateUUID() {
-  let d = new Date().getTime(); //Timestamp
-  let d2 = (performance && performance.now && performance.now() * 1000) || 0; //Time in microseconds since page-load or 0 if unsupported
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
-    let r = Math.random() * 16; //random number between 0 and 16
-    if (d > 0) {
-      //Use timestamp until depleted
-      r = (d + r) % 16 | 0;
-      d = Math.floor(d / 16);
-    } else {
-      //Use microseconds since page-load if supported
-      r = (d2 + r) % 16 | 0;
-      d2 = Math.floor(d2 / 16);
-    }
-    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
-  });
-}
-// END MOVE
-
-// const TARGETS = new DefaultMap(() => ({
-//   isActive: null,
-//   jobID: null,
-//   jobStartTime: null,
-//   jobExpectedCompletionTime: null,
-// }));
 let TARGETS = {};
 
 const SCRIPTS = {
@@ -232,66 +190,4 @@ async function analyzeServer(ns, server) {
     prettyGrow,
   };
 }
-class Cluster {
-  getAvailableThreads(ns, script) {
-    const scriptRam = ns.getScriptRam(script);
-    let totalThreads = 0;
-    const allServers = getUsableServersEnriched(ns);
 
-    for (const server of allServers) {
-      totalThreads += Math.floor(server.availableMemory / scriptRam);
-    }
-    return totalThreads;
-  }
-
-  async distribute(ns, script, desiredThreads, ...args) {
-    const allServers = getUsableServersEnriched(ns).sort(
-      (a, b) => b.availableMemory - a.availableMemory,
-    );
-    const availableClusterThreads = this.getAvailableThreads(ns, script);
-
-    if (availableClusterThreads == 0) {
-      ns.print(`Cluster has no more resources to distribute ${script}`);
-    }
-
-    let threadsToAllocate = Math.min(desiredThreads, availableClusterThreads);
-    if (threadsToAllocate != desiredThreads) {
-      ns.print(
-        `Requested to allocate ${desiredThreads} within the cluster but only ${threadsToAllocate} are available`,
-      );
-    }
-    for (const server of allServers) {
-      const scriptRam = ns.getScriptRam(script);
-      const threadsOnServer = Math.floor(server.availableMemory / scriptRam);
-
-      const threadsAllocatableOnServer = Math.min(
-        threadsOnServer,
-        threadsToAllocate,
-      );
-      if (threadsAllocatableOnServer <= 0) {
-        continue;
-      }
-      // if (!ns.fileExists(script, server)) {
-      //   ns.scp(script, server);
-      // }
-      ns.scp(script, server.name);
-      ns.exec(
-        script,
-        server.name,
-        threadsAllocatableOnServer,
-        ...args,
-        threadsAllocatableOnServer,
-      );
-      threadsToAllocate -= threadsAllocatableOnServer;
-      ns.print(
-        `     → Started ${script} on ${server.name} with t=${threadsAllocatableOnServer}`,
-      );
-    }
-  }
-}
-// TODO: Retrieve current cluster state. Eg scan procs on servers and tally the process and threads
-// Add queue to interface with cluster instead of immedate distribution
-// Optimisation oportunities:
-// * Keep hacking until 50% balance (will account for failed hacks)
-// * Auto scale to all targes within a single invocation. Requires some state management
-// * Prioritise single machine over distributed computing. Perhaps identify the machine with most available threads in order of prority
