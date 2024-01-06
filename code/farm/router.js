@@ -1,16 +1,11 @@
 // Objective: Maintain 50% of prize pool
 
-import { getUsableServersEnriched, generateUUID } from "/code/utils.js";
+import { getUsableServersEnriched, generateUUID, SCRIPTS } from "/code/utils.js";
 import { Cluster } from "/code/farm/cluster.js";
+import { analyzeServer } from "/code/farm/inspector.js";
 
 
 let TARGETS = {};
-
-const SCRIPTS = {
-  WEAKEN: "/code/farm/weaken.js",
-  GROW: "/code/farm/grow.js",
-  HACK: "/code/farm/hack.js",
-};
 
 const PORT = 12;
 async function getTargetData(target) {
@@ -54,7 +49,7 @@ export async function main(ns) {
   // ];
   while (true) {
     const servers = getUsableServersEnriched(ns).filter(
-      (x) => x.hackable && x.maxMoney > 0,
+      (x) => x.hackable && x.maxMoney > 0 && x.name != "n00dles",
     ).map(info => info.name);
     if (Object.keys(TARGETS).length != Object.keys(servers).length) {
       for (var i = 0; i != servers.length; i++) {
@@ -133,61 +128,5 @@ async function prepareServer(ns, server) {
   TARGETS[server].requestedThreads = threadsToUse;
 
   await c.distribute(scriptToUse, threadsToUse, server, PORT, jobID);
-}
-
-/** @param {NS} ns */
-/** @param {string} server */
-async function analyzeServer(ns, server) {
-  // Money
-  const currentMoney = ns.getServerMoneyAvailable(server);
-  const maxMoney = ns.getServerMaxMoney(server);
-  const currentHackTime = ns.getHackTime(server);
-  const currentGrowTime = ns.getGrowTime(server);
-  const moneyBalancePercentage = ((currentMoney / maxMoney) * 100).toFixed(2);
-
-  // Security
-  const currentSecurity = ns.getServerSecurityLevel(server);
-  const minSecurity = ns.getServerMinSecurityLevel(server);
-  const currentWeakenTime = ns.getWeakenTime(server);
-  const additionalSecurity = currentSecurity - minSecurity;
-
-  // Threads
-  const hackThreadsNeeded = Math.ceil(
-    ns.hackAnalyzeThreads(server, currentMoney),
-  );
-  const growThreadsNeeded = Math.ceil(
-    ns.growthAnalyze(server, maxMoney / currentMoney),
-  );
-  const weakenThreadsNeeded = Math.ceil((currentSecurity - minSecurity) * 20);
-
-  const prettyCash = `${ns.nFormat(currentMoney, "$0.0a")} / ${ns.nFormat(
-    maxMoney,
-    "$0.0a",
-  )} (${moneyBalancePercentage}%)`;
-  const prettyHack = `${ns.tFormat(currentHackTime)} (t=${hackThreadsNeeded})`;
-  const prettyGrow = `${ns.tFormat(currentGrowTime)} (t=${growThreadsNeeded})`;
-  const prettyWeaken = `${ns.tFormat(
-    currentWeakenTime,
-  )} (t=${weakenThreadsNeeded})`;
-  const prettySecurity = `${minSecurity} / ${currentSecurity.toFixed(
-    2,
-  )} (Δ ${additionalSecurity.toFixed(2)})`;
-  ns.print(
-    `🧪${server}: ${prettyCash}, Grow ${prettyGrow}, Hack ${prettyHack}, Weaken ${prettyWeaken}, Security ${prettySecurity}`,
-  );
-  return {
-    currentWeakenTime,
-    currentGrowTime,
-    currentHackTime,
-    hackThreadsNeeded,
-    growThreadsNeeded,
-    weakenThreadsNeeded,
-    additionalSecurity,
-    moneyBalancePercentage,
-    prettyHack,
-    prettyWeaken,
-    prettySecurity,
-    prettyGrow,
-  };
 }
 

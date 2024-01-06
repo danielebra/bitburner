@@ -65,3 +65,8 @@ export function generateUUID() {
     return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
   });
 }
+export const SCRIPTS = {
+  WEAKEN: "/code/farm/weaken.js",
+  GROW: "/code/farm/grow.js",
+  HACK: "/code/farm/hack.js",
+};
