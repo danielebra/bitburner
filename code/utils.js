@@ -19,17 +19,20 @@ export function discoverServers(ns) {
   return discoveredServers;
 }
 
-export function getUsableServers(ns) {
+export function getUsableServers(ns, excludeHome = true) {
   const allServers = discoverServers(ns);
 
   const servers = allServers.filter((server) => ns.hasRootAccess(server));
-  return servers.filter((server) => server != "home");
+  if (excludeHome) {
+    return servers.filter((server) => server != "home");
+  }
+  return servers;
 }
 
 /** @param {NS} ns */
-export function getUsableServersEnriched(ns) {
-  const currentHackingLevel = ns.getHackingLevel()
-  return getUsableServers(ns).map((server) => {
+export function getUsableServersEnriched(ns, excludeHome = true) {
+  const currentHackingLevel = ns.getHackingLevel();
+  return getUsableServers(ns, excludeHome).map((server) => {
     const maxMoney = ns.getServerMaxMoney(server);
     const currentMoney = ns.getServerMoneyAvailable(server);
     const percentageFilled = maxMoney > 0 ? (currentMoney / maxMoney) * 100 : 0;
@@ -43,7 +46,7 @@ export function getUsableServersEnriched(ns) {
       usedMemory: usedMemory,
       totalMemory: totalMemory,
       availableMemory: totalMemory - usedMemory,
-      hackable: currentHackingLevel > ns.getServerRequiredHackingLevel(server)
+      hackable: currentHackingLevel > ns.getServerRequiredHackingLevel(server),
     };
   });
 }
@@ -67,6 +70,7 @@ export function generateUUID() {
 }
 export const SCRIPTS = {
   WEAKEN: "/code/farm/weaken.js",
+  FOREVER_WEAKEN: "/code/farm/forever-weaken.js",
   GROW: "/code/farm/grow.js",
   HACK: "/code/farm/hack.js",
 };
