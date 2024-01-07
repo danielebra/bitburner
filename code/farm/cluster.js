@@ -1,34 +1,34 @@
 import { getUsableServersEnriched } from "/code/utils.js";
 export class Cluster {
   /** @param {NS} ns */
-  constructor(ns) {
+  constructor(ns, excludeHome = true) {
     this.ns = ns;
+    this.excludeHome = excludeHome;
   }
   getTotalRam() {
-    const allServers = getUsableServersEnriched(this.ns);
+    const allServers = getUsableServersEnriched(this.ns, this.excludeHome);
     return allServers.reduce((acc, server) => acc + server.totalMemory, 0);
   }
   getTotalAvailableRam() {
-    const allServers = getUsableServersEnriched(this.ns);
+    const allServers = getUsableServersEnriched(this.ns, this.excludeHome);
     return allServers.reduce((acc, server) => acc + server.availableMemory, 0);
   }
   getTotalUsedRam() {
-    const allServers = getUsableServersEnriched(this.ns);
+    const allServers = getUsableServersEnriched(this.ns, this.excludeHome);
     return allServers.reduce((acc, server) => acc + server.usedMemory, 0);
   }
   getUtilizationPercentage() {
-    const max = this.getTotalRam()
-    const used = this.getTotalUsedRam()
-    
+    const max = this.getTotalRam();
+    const used = this.getTotalUsedRam();
+
     if (max === 0) return 0;
 
-    return ((used / max) * 100).toFixed(2)
-
+    return ((used / max) * 100).toFixed(2);
   }
   getAvailableThreads(script) {
     const scriptRam = this.ns.getScriptRam(script);
     let totalThreads = 0;
-    const allServers = getUsableServersEnriched(this.ns);
+    const allServers = getUsableServersEnriched(this.ns, this.excludeHome);
 
     for (const server of allServers) {
       totalThreads += Math.floor(server.availableMemory / scriptRam);
@@ -37,7 +37,7 @@ export class Cluster {
   }
 
   async distribute(script, desiredThreads, ...args) {
-    const allServers = getUsableServersEnriched(this.ns).sort(
+    const allServers = getUsableServersEnriched(this.ns, this.excludeHome).sort(
       (a, b) => b.availableMemory - a.availableMemory,
     );
     const availableClusterThreads = this.getAvailableThreads(script);
@@ -56,10 +56,7 @@ export class Cluster {
       const scriptRam = this.ns.getScriptRam(script);
       const threadsOnServer = Math.floor(server.availableMemory / scriptRam);
 
-      const threadsAllocatableOnServer = Math.min(
-        threadsOnServer,
-        threadsToAllocate,
-      );
+      const threadsAllocatableOnServer = Math.min(threadsOnServer, threadsToAllocate);
       if (threadsAllocatableOnServer <= 0) {
         continue;
       }
@@ -67,17 +64,9 @@ export class Cluster {
       //   this.ns.scp(script, server);
       // }
       this.ns.scp(script, server.name);
-      this.ns.exec(
-        script,
-        server.name,
-        threadsAllocatableOnServer,
-        ...args,
-        threadsAllocatableOnServer,
-      );
+      this.ns.exec(script, server.name, threadsAllocatableOnServer, ...args, threadsAllocatableOnServer);
       threadsToAllocate -= threadsAllocatableOnServer;
-      this.ns.print(
-        `     → Started ${script} on ${server.name} with t=${threadsAllocatableOnServer}`,
-      );
+      this.ns.print(`     → Started ${script} on ${server.name} with t=${threadsAllocatableOnServer}`);
     }
   }
 }

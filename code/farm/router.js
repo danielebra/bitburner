@@ -4,7 +4,6 @@ import { getUsableServersEnriched, generateUUID, SCRIPTS } from "/code/utils.js"
 import { Cluster } from "/code/farm/cluster.js";
 import { analyzeServer } from "/code/farm/inspector.js";
 
-
 let TARGETS = {};
 
 const PORT = 12;
@@ -48,9 +47,12 @@ export async function main(ns) {
   //   "the-hub"
   // ];
   while (true) {
-    const servers = getUsableServersEnriched(ns).filter(
-      (x) => x.hackable && x.maxMoney > 0 && x.name != "n00dles",
-    ).map(info => info.name);
+    const servers =
+      [ns.args[0]] ||
+      getUsableServersEnriched(ns)
+        .filter((x) => x.hackable && x.maxMoney > 0)
+        .map((info) => info.name);
+
     if (Object.keys(TARGETS).length != Object.keys(servers).length) {
       for (var i = 0; i != servers.length; i++) {
         await getTargetData(servers[i]);
@@ -100,7 +102,7 @@ async function attackServer(ns, server) {
 /** @param {NS} ns */
 async function prepareServer(ns, server) {
   const data = await analyzeServer(ns, server);
-  const c = new Cluster(ns);
+  const c = new Cluster(ns, false);
   const jobID = generateUUID();
 
   let scriptToUse;
@@ -129,4 +131,3 @@ async function prepareServer(ns, server) {
 
   await c.distribute(scriptToUse, threadsToUse, server, PORT, jobID);
 }
-
