@@ -6,5 +6,5 @@ export async function main(ns) {
   ns.disableLog("ALL");
   const threads = ns.args[0] || 99999;
   const cluster = new Cluster(ns, false);
-  await cluster.distribute(SCRIPTS.FOREVER_WEAKEN, threads, "foodnstuff");
+  await cluster.distribute(SCRIPTS.FOREVER_WEAKEN, threads, ns.args[1] || "foodnstuff");
 }

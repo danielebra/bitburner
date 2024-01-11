@@ -38,6 +38,7 @@ export function getUsableServersEnriched(ns, excludeHome = true) {
     const percentageFilled = maxMoney > 0 ? (currentMoney / maxMoney) * 100 : 0;
     const usedMemory = ns.getServerUsedRam(server);
     const totalMemory = ns.getServerMaxRam(server);
+    const requiredHackingLevel = ns.getServerRequiredHackingLevel(server);
     return {
       name: server,
       currentMoney: currentMoney,
@@ -46,7 +47,9 @@ export function getUsableServersEnriched(ns, excludeHome = true) {
       usedMemory: usedMemory,
       totalMemory: totalMemory,
       availableMemory: totalMemory - usedMemory,
-      hackable: currentHackingLevel > ns.getServerRequiredHackingLevel(server),
+      hackable: currentHackingLevel > requiredHackingLevel,
+      recommendedToHack: currentHackingLevel >= requiredHackingLevel * 3 || requiredHackingLevel == 1,
+      requiredHackingLevel: requiredHackingLevel,
     };
   });
 }

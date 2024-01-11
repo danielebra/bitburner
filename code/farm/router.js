@@ -6,7 +6,7 @@ import { analyzeServer } from "/code/farm/inspector.js";
 
 let TARGETS = {};
 
-const PORT = 12;
+const PORT = 13;
 async function getTargetData(target) {
   if (!TARGETS[target]) {
     TARGETS[target] = {
@@ -47,11 +47,11 @@ export async function main(ns) {
   //   "the-hub"
   // ];
   while (true) {
-    const servers =
-      [ns.args[0]] ||
-      getUsableServersEnriched(ns)
-        .filter((x) => x.hackable && x.maxMoney > 0)
-        .map((info) => info.name);
+    const servers = ns.args[0]
+      ? [ns.args[0]]
+      : getUsableServersEnriched(ns)
+          .filter((x) => x.hackable && x.maxMoney > 0)
+          .map((info) => info.name);
 
     if (Object.keys(TARGETS).length != Object.keys(servers).length) {
       for (var i = 0; i != servers.length; i++) {

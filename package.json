@@ -1,5 +1,8 @@
 {
   "dependencies": {
     "bitburner-sync": "^1.5.3"
+  },
+  "prettier": {
+    "printWidth": 120
   }
 }
