@@ -55,10 +55,13 @@ export async function main(ns) {
 			}
 		}
 
+    if (contractsOnServer === 0) {
+      continue
+    }
 		ns.print(contractsOnServer + " contracts on " + serverName);
 	}
 
-
+  return
 	ns.print(contracts.length + " total contracts found.");
 	ns.print("-------------------------------------------------------------");
 

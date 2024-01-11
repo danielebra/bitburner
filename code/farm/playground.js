@@ -14,11 +14,14 @@ export async function main(ns) {
     ns.print("INFO ", `Preparing ${target}`);
     isTargetReady = await manager.prepareTarget();
   }
-  ns.print("INFO ","Ready");
+  ns.print("INFO ", "Ready");
   const state = await analyzeServer(ns, target);
   ns.print(state.currentWeakenTime);
   ns.print(state.currentGrowTime);
   ns.print(state.currentHackTime);
+
+  await manager.batch();
+  await ns.sleep(60 * 1000 * 60);
 }
 
 class HWGW {
@@ -44,16 +47,69 @@ class HWGW {
 
   async batch() {
     const state = await analyzeServer(this.ns, this.target);
-    // Calculate how many weaken threads its going to take to recover from hack
-    await this.cluster.distribute(SCRIPTS.WEAKEN, state.weakenThreadsNeeded, this.target);
-    await this.ns.sleep()
-    // Calculate how many weaken threads its going to take to recover from grow
-    await this.cluster.distribute(SCRIPTS.WEAKEN, state.weakenThreadsNeeded, this.target);
-    await this.ns.sleep()
-    // Calculate how many grow threads its going to take to recover from hack
-    await this.cluster.distribute(SCRIPTS.GROW, state.growThreadsNeeded, this.target);
-    await this.ns.sleep()
-    const threadsForHalfBalance = Math.floor(state.hackThreadsNeeded / 2)
-    await this.cluster.distribute(SCRIPTS.HACK, threadsForHalfBalance, this.target);
+
+    //
+    const growTime = state.currentGrowTime
+    const weakenTime = state.currentWeakenTime
+    const hackTime = state.currentHackTime
+    //
+    const hackThreads = Math.floor(state.hackThreadsNeeded / 2)
+    const growThreads = state.growThreadsNeeded
+    const weakenThreads = state.weakenThreadsNeeded
+    const totalThreadsNeeded = hackThreads + growThreads + weakenThreads + weakenThreads
+    this.ns.print(totalThreadsNeeded)
+    if (totalThreadsNeeded <= this.cluster.getAvailableThreads(SCRIPTS.GROW)) {
+      this.ns.print("We can afford")
+    }
+    else {
+      this.ns.print("Not enough threads")
+    }
+    return
+    // Retrieve the dynamic times for each operation
+    // const weakenTime = this.ns.getWeakenTime(this.target);
+    // const growTime = this.ns.getGrowTime(this.target);
+    // const hackTime = this.ns.getHackTime(this.target);
+
+    // const operationDelay = 1000; // 1 second delay
+
+    // const hackStartTime = weakenTime - hackTime - operationDelay;
+    // const growStartTime = weakenTime - growTime + operationDelay;
+
+    // // Calculate the number of threads needed for each operation
+    // const weakenThreads = 100;
+    // const growThreads = 100;
+    // const hackThreads = 100;
+
+    // let startTime = Date.now();
+    // // Distribute the first weaken operation immediately
+    // this.ns.print("WARN ", (Date.now() - startTime) / 1000);
+    // this.cluster.distribute(SCRIPTS.WEAKEN, weakenThreads, this.target);
+
+    // // Wait for the second weaken start time, then distribute
+    // // await this.ns.sleep(weaken2StartTime - growStartTime); // Adjust for elapsed time
+    // await this.ns.sleep(2000);
+    // this.ns.print("WARN ", (Date.now() - startTime) / 1000);
+    // this.cluster.distribute(SCRIPTS.WEAKEN, weakenThreads, this.target);
+
+    // // Wait for the grow start time, then distribute
+    // // await this.ns.sleep(growStartTime - hackStartTime); // Adjust for elapsed time
+    // await this.ns.sleep(2000);
+    // this.ns.print("WARN ", (Date.now() - startTime) / 1000);
+    // this.cluster.distribute(SCRIPTS.GROW, growThreads, this.target);
+
+    // // Wait for the hack start time, then distribute
+    // // await this.ns.sleep(hackStartTime); // Convert to milliseconds
+    // await this.ns.sleep(8000);
+    // this.ns.print("WARN ", (Date.now() - startTime) / 1000);
+    // this.cluster.distribute(SCRIPTS.HACK, hackThreads, this.target);
+
+    // The operations are now scheduled to complete in the correct order
+  }
+
+  calculateWeakenThreadsForHack() {
+    return 100;
+  }
+  calculateWeakenThreadsForGrow() {
+    return 100;
   }
 }

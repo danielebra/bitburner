@@ -46,10 +46,12 @@ export class Cluster {
       this.ns.print(`Cluster has no more resources to distribute ${script}`);
     }
 
+    // Temp limit to 500
     let threadsToAllocate = Math.min(desiredThreads, availableClusterThreads);
+    const threadsThatWillBeAllocated = threadsToAllocate
     if (threadsToAllocate != desiredThreads) {
       this.ns.print(
-        `Requested to allocate ${desiredThreads} within the cluster but only ${threadsToAllocate} are available`,
+        "WARN ", `Requested to allocate ${desiredThreads} within the cluster but only ${threadsToAllocate} are available`,
       );
     }
     for (const server of allServers) {
@@ -68,5 +70,6 @@ export class Cluster {
       threadsToAllocate -= threadsAllocatableOnServer;
       this.ns.print(`     → Started ${script} on ${server.name} with t=${threadsAllocatableOnServer}`);
     }
+    return threadsThatWillBeAllocated;
   }
 }

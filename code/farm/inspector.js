@@ -15,7 +15,7 @@ export async function analyzeServer(ns, server, logState = true) {
 
   // Threads
   const hackThreadsNeeded = Math.ceil(ns.hackAnalyzeThreads(server, currentMoney));
-  const growThreadsNeeded = Math.ceil(ns.growthAnalyze(server, maxMoney / currentMoney));
+  const growThreadsNeeded = Math.ceil(ns.growthAnalyze(server, maxMoney / currentMoney || 1));
   const weakenThreadsNeeded = Math.ceil((currentSecurity - minSecurity) * 20);
 
   const prettyCash = `${ns.nFormat(currentMoney, "$0.0a")} / ${ns.nFormat(

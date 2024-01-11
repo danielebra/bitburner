@@ -561,8 +561,8 @@ async function updateForecast(ns, allStocks, has4s) {
           detectedCycleTick >= nearTermForecastWindowLength / 2 &&
           detectedCycleTick <= nearTermForecastWindowLength + inversionLagTolerance))
     )
-      stk.lastInversion = detectedCycleTick;
-    // If we "trust" a probability inversion has occurred, probability will be calculated based on only history since the last inversion.
+      stk.lastInversion =
+        detectedCycleTick; // If we "trust" a probability inversion has occurred, probability will be calculated based on only history since the last inversion.
     else stk.lastInversion++;
     // Only take the stock history since after the last inversion to compute the probability of the stock.
     const probWindowLength = Math.min(longTermForecastWindowLength, stk.lastInversion);
