@@ -26,8 +26,18 @@ export async function main(ns) {
   ns.print("INFO ", "Calculated Threads: ", calculatedThreads);
   ns.print("INFO ", "Calculated Durations: ", calcuatedDurations);
   ns.print("INFO ", "Plan: ", calculatedPlan);
-  return;
+  ns.print(
+    "DEBUG ",
+    "By End Time: ",
+    calculatedPlan.sort((a, b) => a.endTime - b.endTime).map((j) => j.script),
+  );
+  ns.print(
+    "DEBUG ",
+    "By Start Time: ",
+    calculatedPlan.sort((a, b) => a.startTime - b.startTime).map((j) => j.script),
+  );
   await manager.execute(calculatedPlan);
+  await analyzeServer(ns, target);
   return;
   await analyzeServer(ns, target);
   await manager.cluster.distribute(SCRIPTS.HACK, calculatedThreads.hackThreads, target);
@@ -123,10 +133,10 @@ class HWGW {
     const hackStartTime = weakenAfterHackEndTime - durations.hack - OFFSET;
     const hackEndTime = hackStartTime + durations.hack;
 
-    const growStartTime = hackEndTime - durations.grow - OFFSET;
+    const growStartTime = hackEndTime - durations.grow + OFFSET;
     const growEndTime = growStartTime + durations.grow;
 
-    const weakenAfterGrowStartTime = growEndTime - durations.grow - OFFSET;
+    const weakenAfterGrowStartTime = growEndTime - durations.weaken + OFFSET;
     const weakenAfterGrowEndTime = weakenAfterGrowStartTime + durations.weaken;
 
     const hackJob = {
@@ -134,45 +144,47 @@ class HWGW {
       startTime: hackStartTime,
       endTime: hackEndTime,
       threads: threads.hackThreads,
+      script: SCRIPTS.HACK,
+      target: this.target,
     };
     const weakenAfterHackJob = {
       id: generateUUID(),
       startTime: weakenAfterHackStartTime,
       endTime: weakenAfterHackEndTime,
       threads: threads.weakenThreadsAfterHack,
+      script: SCRIPTS.WEAKEN,
+      target: this.target,
     };
     const weakenAfterGrowJob = {
       id: generateUUID(),
       startTime: weakenAfterGrowStartTime,
       endTime: weakenAfterGrowEndTime,
       threads: threads.weakenThreadsAfterGrow,
+      script: SCRIPTS.WEAKEN,
+      target: this.target,
     };
     const growJob = {
       id: generateUUID(),
       startTime: growStartTime,
       endTime: growEndTime,
       threads: threads.growthThreadsForReplenish,
+      script: SCRIPTS.GROW,
+      target: this.target,
     };
 
     return [hackJob, weakenAfterHackJob, weakenAfterGrowJob, growJob];
-    return { weakenAfterHackStartTime, hackStartTime, growStartTime, weakenAfterGrowStartTime };
   }
 
   async execute(plan) {
-    let tasks = [
-      { id: 1, startTime: plan.weakenAfterHackStartTime, script: SCRIPTS.WEAKEN },
-      { id: 2, startTime: plan.hackStartTime, script: SCRIPTS.HACK },
-      { id: 3, startTime: plan.growStartTime, script: SCRIPTS.GROW },
-      { id: 4, startTime: plan.weakenAfterGrowStartTime, script: SCRIPTS.WEAKEN },
-    ];
-
+    // Deep copy for mutation safety
+    let tasks = JSON.parse(JSON.stringify(plan));
     while (tasks.length > 0) {
       const currentTime = performance.now();
       const dispatchableTasks = tasks.filter((task) => currentTime >= task.startTime);
-      dispatchableTasks.forEach((task) => {
+      for (const task of dispatchableTasks) {
         this.ns.print("Should dispatch", task.script);
-        // this.cluster.distribute(task.script, teas
-      });
+        await this.cluster.distribute(task.script, task.threads, task.target, false, task.id);
+      }
 
       tasks = tasks.filter((task) => !dispatchableTasks.includes(task));
 
