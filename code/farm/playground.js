@@ -9,21 +9,34 @@ export async function main(ns) {
   ns.clearLog();
   const target = "n00dles";
   const manager = new HWGW(ns, target);
-  // let isTargetReady = false;
-  // while (!isTargetReady) {
-  //   ns.print("INFO ", `Preparing ${target}`);
-  //   isTargetReady = await manager.prepareTarget();
-  // }
-  // ns.print("INFO ", "Ready");
-  // const state = await analyzeServer(ns, target);
-  // ns.print(state.currentWeakenTime);
-  // ns.print(state.currentGrowTime);
-  // ns.print(state.currentHackTime);
+  let isTargetReady = false;
+  while (!isTargetReady) {
+    ns.print("INFO ", `Preparing ${target}`);
+    isTargetReady = await manager.prepareTarget();
+  }
+  ns.print("INFO ", "Ready");
+  const state = await analyzeServer(ns, target);
+  ns.print(state.currentWeakenTime);
+  ns.print(state.currentGrowTime);
+  ns.print(state.currentHackTime);
 
   const calculatedThreads = await manager.calculateThreads();
   ns.print("INFO ", "Calculated Threads: ", calculatedThreads);
+  await analyzeServer(ns, target);
+  await manager.cluster.distribute(SCRIPTS.HACK, calculatedThreads.hackThreads, target);
+  await ns.sleep(10000);
+  await analyzeServer(ns, target);
+  await manager.cluster.distribute(SCRIPTS.WEAKEN, calculatedThreads.weakenThreadsAfterHack, target);
+  await ns.sleep(10000);
+  await analyzeServer(ns, target);
+  await manager.cluster.distribute(SCRIPTS.GROW, calculatedThreads.growthThreadsForReplenish, target);
+  await ns.sleep(10000);
+  await analyzeServer(ns, target);
+  await manager.cluster.distribute(SCRIPTS.WEAKEN, calculatedThreads.weakenThreadsAfterGrow, target);
+  await ns.sleep(10000);
+  await analyzeServer(ns, target);
   // await manager.batch();
-  await ns.sleep(60 * 1000 * 60);
+  // await ns.sleep(60 * 1000 * 60);
 }
 
 class HWGW {
@@ -53,7 +66,7 @@ class HWGW {
     const cores = 1;
 
     // Calcuate the number of threads to hack half of the balance (Note: does not consider hacking chance)
-    const hackThreads = state.hackThreadsNeeded / 2;
+    const hackThreads = Math.ceil(state.hackThreadsNeeded / 2);
     // Calculates security increase after hacking half balance of target
     const securityIncreaseAfterHack = this.ns.hackAnalyzeSecurity(hackThreads, this.target);
 
@@ -62,11 +75,26 @@ class HWGW {
 
     // Calculates how many growth threads would be needed to replenish balance from half to full
     const halfBalanceToFullBalanceMultiplier = state.maxMoney / (state.maxMoney / 2);
-    const growthThreadsForReplenish = this.ns.growthAnalyze(this.target, halfBalanceToFullBalanceMultiplier, cores);
+    const growthThreadsForReplenish = Math.ceil(
+      this.ns.growthAnalyze(this.target, halfBalanceToFullBalanceMultiplier, cores),
+    );
+    const securityIncreaseAfterGrow = this.ns.hackAnalyzeSecurity(growthThreadsForReplenish, this.target);
 
     // TODO: Weaken threads?
+    // const weakenThreadsAfterHack = state.minSecurity + (state.minSecurity + securityIncreaseAfterHack) * 20;
+    // const weakenThreadsAfterGrow = state.minSecurity + (state.minSecurity + securityIncreaseAfterGrow) * 20;
+    const weakenThreadsAfterHack = Math.ceil(securityIncreaseAfterHack / securityDecreasePerThread);
+    const weakenThreadsAfterGrow = Math.ceil(securityIncreaseAfterGrow / securityDecreasePerThread);
 
-    return { securityIncreaseAfterHack, securityDecreasePerThread, growthThreadsForReplenish, hackThreads };
+    return {
+      securityIncreaseAfterHack,
+      securityIncreaseAfterGrow,
+      securityDecreasePerThread,
+      growthThreadsForReplenish,
+      hackThreads,
+      weakenThreadsAfterHack,
+      weakenThreadsAfterGrow,
+    };
   }
 
   async calculateTimings(calculatedThreads) {}

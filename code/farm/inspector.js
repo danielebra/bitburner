@@ -45,5 +45,8 @@ export async function analyzeServer(ns, server, logState = true) {
     prettySecurity,
     prettyGrow,
     prettyCash,
+    maxMoney,
+    currentMoney,
+    minSecurity,
   };
 }
