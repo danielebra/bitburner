@@ -1,6 +1,6 @@
 import { Cluster } from "/code/farm/cluster.js";
 import { analyzeServer } from "/code/farm/inspector.js";
-import { SCRIPTS } from "/code/utils.js";
+import { SCRIPTS, generateUUID } from "/code/utils.js";
 
 /** @param {NS} ns */
 export async function main(ns) {
@@ -26,6 +26,7 @@ export async function main(ns) {
   ns.print("INFO ", "Calculated Threads: ", calculatedThreads);
   ns.print("INFO ", "Calculated Durations: ", calcuatedDurations);
   ns.print("INFO ", "Plan: ", calculatedPlan);
+  return;
   await manager.execute(calculatedPlan);
   return;
   await analyzeServer(ns, target);
@@ -113,6 +114,7 @@ class HWGW {
   }
 
   async plan(threads, durations) {
+    // Generate a job plan from given calculated threads and durations
     const OFFSET = 1000;
 
     const weakenAfterHackStartTime = performance.now();
@@ -127,6 +129,32 @@ class HWGW {
     const weakenAfterGrowStartTime = growEndTime - durations.grow - OFFSET;
     const weakenAfterGrowEndTime = weakenAfterGrowStartTime + durations.weaken;
 
+    const hackJob = {
+      id: generateUUID(),
+      startTime: hackStartTime,
+      endTime: hackEndTime,
+      threads: threads.hackThreads,
+    };
+    const weakenAfterHackJob = {
+      id: generateUUID(),
+      startTime: weakenAfterHackStartTime,
+      endTime: weakenAfterHackEndTime,
+      threads: threads.weakenThreadsAfterHack,
+    };
+    const weakenAfterGrowJob = {
+      id: generateUUID(),
+      startTime: weakenAfterGrowStartTime,
+      endTime: weakenAfterGrowEndTime,
+      threads: threads.weakenThreadsAfterGrow,
+    };
+    const growJob = {
+      id: generateUUID(),
+      startTime: growStartTime,
+      endTime: growEndTime,
+      threads: threads.growthThreadsForReplenish,
+    };
+
+    return [hackJob, weakenAfterHackJob, weakenAfterGrowJob, growJob];
     return { weakenAfterHackStartTime, hackStartTime, growStartTime, weakenAfterGrowStartTime };
   }
 
@@ -141,7 +169,10 @@ class HWGW {
     while (tasks.length > 0) {
       const currentTime = performance.now();
       const dispatchableTasks = tasks.filter((task) => currentTime >= task.startTime);
-      dispatchableTasks.forEach((task) => this.ns.print("Should dispatch", task.script));
+      dispatchableTasks.forEach((task) => {
+        this.ns.print("Should dispatch", task.script);
+        // this.cluster.distribute(task.script, teas
+      });
 
       tasks = tasks.filter((task) => !dispatchableTasks.includes(task));
 
