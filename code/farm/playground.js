@@ -8,7 +8,7 @@ export async function main(ns) {
   ns.tail();
   ns.disableLog("ALL");
   ns.clearLog();
-  const target = "n00dles";
+  const target = ns.args[0] || "n00dles";
   const manager = new HWGW(ns, target);
   let isTargetReady = false;
   while (!isTargetReady) {
@@ -36,6 +36,32 @@ export async function main(ns) {
       "DEBUG ",
       "By Start Time: ",
       planByStartTime.map((j) => j.script),
+    );
+    await manager.execute(calculatedPlan);
+    await analyzeServer(ns, target);
+    await ns.sleep(1000);
+  }
+}
+async function controller(ns, target) {
+  const manager = new HWGW(ns, target);
+  let isTargetReady = false;
+  while (!isTargetReady) {
+    ns.print("INFO ", `Preparing ${target}`);
+    isTargetReady = await manager.prepareTarget();
+  }
+  ns.print("INFO ", "Ready");
+  await analyzeServer(ns, target);
+
+  while (true) {
+    const calculatedThreads = await manager.calculateThreads();
+    const calcuatedDurations = await manager.calculateDurations();
+    const calculatedPlan = await manager.plan(calculatedThreads, calcuatedDurations);
+    const planByEndTime = calculatedPlan.sort((a, b) => a.endTime - b.endTime);
+    const planByStartTime = calculatedPlan.sort((a, b) => a.startTime - b.startTime);
+    ns.print(
+      "INFO ",
+      "This batch will complete in: ",
+      planByEndTime.map((j) => j.endTime)[3] - planByStartTime.map((j) => j.startTime)[3],
     );
     await manager.execute(calculatedPlan);
     await analyzeServer(ns, target);
