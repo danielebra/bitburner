@@ -25,6 +25,7 @@ export async function main(ns) {
 }
 
 class HWGW {
+  /** @param {NS} ns */
   constructor(ns, target) {
     this.ns = ns;
     this.cluster = new Cluster(ns);
@@ -45,26 +46,37 @@ class HWGW {
     }
   }
 
+  async calculate() {
+    // Calculates security increase after allocating 10 threads to hacking n00dles
+    this.ns.hackAnalyzeSecurity(10, "n00dles");
+
+    // Calculates how much security would be decreased after certain number of weaken threads (is impacted by number of cores, 2nd arg)
+    this.ns.weakenAnalyz(10, 1);
+
+    // Calculates how many growth threads would be needed to replenish balance
+    const halfBalanceToFullBalanceMultiplier = ns.getServerMaxMoney("n00dles") / (ns.getServerMaxMoney("n00dles") / 2);
+    this.ns.growthAnalyze("n00dles", halfBalanceToFullBalanceMultiplier, 1);
+  }
+
   async batch() {
     const state = await analyzeServer(this.ns, this.target);
 
     //
-    const growTime = state.currentGrowTime
-    const weakenTime = state.currentWeakenTime
-    const hackTime = state.currentHackTime
+    const growTime = state.currentGrowTime;
+    const weakenTime = state.currentWeakenTime;
+    const hackTime = state.currentHackTime;
     //
-    const hackThreads = Math.floor(state.hackThreadsNeeded / 2)
-    const growThreads = state.growThreadsNeeded
-    const weakenThreads = state.weakenThreadsNeeded
-    const totalThreadsNeeded = hackThreads + growThreads + weakenThreads + weakenThreads
-    this.ns.print(totalThreadsNeeded)
+    const hackThreads = Math.floor(state.hackThreadsNeeded / 2);
+    const growThreads = state.growThreadsNeeded;
+    const weakenThreads = state.weakenThreadsNeeded;
+    const totalThreadsNeeded = hackThreads + growThreads + weakenThreads + weakenThreads;
+    this.ns.print(totalThreadsNeeded);
     if (totalThreadsNeeded <= this.cluster.getAvailableThreads(SCRIPTS.GROW)) {
-      this.ns.print("We can afford")
+      this.ns.print("We can afford");
+    } else {
+      this.ns.print("Not enough threads");
     }
-    else {
-      this.ns.print("Not enough threads")
-    }
-    return
+    return;
     // Retrieve the dynamic times for each operation
     // const weakenTime = this.ns.getWeakenTime(this.target);
     // const growTime = this.ns.getGrowTime(this.target);
