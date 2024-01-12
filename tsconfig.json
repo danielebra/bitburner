@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+      "target": "ES6",
+      "module": "commonjs",
+      "checkJs": true,
+      "allowJs": true,
+      "typeRoots": ["./types"],
+      "types": ["NetscriptDefinitions"],
+      "esModuleInterop": true,
+      "skipLibCheck": true
+    },
+    "include": [
+      "**/*.js",
+      "./types/**/*.d.ts"
+    ]
+  }
+  

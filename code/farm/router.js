@@ -27,11 +27,13 @@ export async function main(ns) {
   ns.tail();
   ns.disableLog("ALL");
   while (true) {
-    const servers = ns.args.length > 0
-      ? ns.args
-      : getUsableServersEnriched(ns)
-          .filter((x) => x.hackable && x.maxMoney > 0 && x.recommendedToHack)
-          .map((info) => info.name);
+    const servers =
+      ns.args.length > 0
+        ? ns.args
+        : getUsableServersEnriched(ns)
+            // .filter((x) => x.hackable && x.maxMoney > 0 && x.recommendedToHack)
+            .filter((x) => x.hackable && x.maxMoney > 0 && x.name != "n00dles") // && x.recommendedToHack)
+            .map((info) => info.name);
 
     if (Object.keys(TARGETS).length != Object.keys(servers).length) {
       for (var i = 0; i != servers.length; i++) {
@@ -50,7 +52,8 @@ export async function main(ns) {
         if (TARGETS[target].jobID == jobID && status == "COMPLETE") {
           TARGETS[target].runningThreads -= threads;
           ns.print(
-            "INFO: ", `ⓘ  Updating job ${jobID} on target ${target}: t=${threads} reached ${status}. ${TARGETS[target].runningThreads} remaining`,
+            "INFO: ",
+            `ⓘ  Updating job ${jobID} on target ${target}: t=${threads} reached ${status}. ${TARGETS[target].runningThreads} remaining`,
           );
           if (TARGETS[target].runningThreads <= 0) {
             TARGETS[target].isActive = false;
@@ -99,7 +102,7 @@ async function prepareServer(ns, server) {
   } else {
     ns.print(`  • Would like to hack ${server}. ${data.prettyHack}`);
     const threadsForHalfBalance = Math.floor(data.hackThreadsNeeded / 2);
-    const threadsForQuarterBalance = Math.floor(data.hackThreadsNeeded * 0.60);
+    const threadsForQuarterBalance = Math.floor(data.hackThreadsNeeded * 0.6);
     scriptToUse = SCRIPTS.HACK;
     threadsToUse = threadsForQuarterBalance;
   }
@@ -107,12 +110,11 @@ async function prepareServer(ns, server) {
   const distributedThreadsAllocated = await c.distribute(scriptToUse, threadsToUse, server, PORT, jobID);
   if (distributedThreadsAllocated === 0) {
     ns.print("WARN", `  Job ${jobID} was skipped due to insufficient resources`);
-    return false
+    return false;
   }
   TARGETS[server].isActive = true;
   TARGETS[server].jobID = jobID;
 
   TARGETS[server].requestedThreads = threadsToUse;
-  TARGETS[server].runningThreads = distributedThreadsAllocated
-  
+  TARGETS[server].runningThreads = distributedThreadsAllocated;
 }
