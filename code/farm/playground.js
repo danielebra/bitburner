@@ -21,7 +21,12 @@ export async function main(ns) {
   ns.print(state.currentHackTime);
 
   const calculatedThreads = await manager.calculateThreads();
+  const calcuatedDurations = await manager.calculateDurations();
+  const calculatedPlan = await manager.plan(calculatedThreads, calcuatedDurations);
   ns.print("INFO ", "Calculated Threads: ", calculatedThreads);
+  ns.print("INFO ", "Calculated Durations: ", calcuatedDurations);
+  ns.print("INFO ", "Plan: ", calculatedPlan);
+  return;
   await analyzeServer(ns, target);
   await manager.cluster.distribute(SCRIPTS.HACK, calculatedThreads.hackThreads, target);
   await ns.sleep(10000);
@@ -97,7 +102,36 @@ class HWGW {
     };
   }
 
-  async calculateTimings(calculatedThreads) {}
+  async calculateDurations() {
+    const state = await analyzeServer(this.ns, this.target);
+    return {
+      hack: state.currentHackTime,
+      weaken: state.currentWeakenTime,
+      grow: state.currentGrowTime,
+    };
+  }
+
+  async plan(threads, durations) {
+    const OFFSET = 1000;
+
+    const weakenAfterHackStartTime = performance.now();
+    const weakenAfterHackEndTime = weakenAfterHackStartTime + durations.weaken;
+
+    const hackStartTime = weakenAfterHackEndTime - durations.hack - OFFSET;
+    const hackEndTime = hackStartTime + durations.hack;
+
+    const growStartTime = weakenAfterHackEndTime + OFFSET;
+    const growEndTime = growStartTime + durations.grow;
+
+    const weakenAfterGrowStartTime = growEndTime - durations.grow - OFFSET;
+    const weakenAfterGrowEndTime = weakenAfterGrowStartTime + durations.weaken;
+
+    return { weakenAfterHackStartTime, hackStartTime, growStartTime, weakenAfterGrowStartTime };
+  }
+
+  async execute(plan) {
+    // TODO: Create jobs from plan
+  }
 
   async batch() {
     const state = await analyzeServer(this.ns, this.target);
