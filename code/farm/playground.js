@@ -26,6 +26,7 @@ export async function main(ns) {
   ns.print("INFO ", "Calculated Threads: ", calculatedThreads);
   ns.print("INFO ", "Calculated Durations: ", calcuatedDurations);
   ns.print("INFO ", "Plan: ", calculatedPlan);
+  await manager.execute(calculatedPlan);
   return;
   await analyzeServer(ns, target);
   await manager.cluster.distribute(SCRIPTS.HACK, calculatedThreads.hackThreads, target);
@@ -120,7 +121,7 @@ class HWGW {
     const hackStartTime = weakenAfterHackEndTime - durations.hack - OFFSET;
     const hackEndTime = hackStartTime + durations.hack;
 
-    const growStartTime = weakenAfterHackEndTime + OFFSET;
+    const growStartTime = hackEndTime - durations.grow - OFFSET;
     const growEndTime = growStartTime + durations.grow;
 
     const weakenAfterGrowStartTime = growEndTime - durations.grow - OFFSET;
@@ -130,7 +131,22 @@ class HWGW {
   }
 
   async execute(plan) {
-    // TODO: Create jobs from plan
+    let tasks = [
+      { id: 1, startTime: plan.weakenAfterHackStartTime, script: SCRIPTS.WEAKEN },
+      { id: 2, startTime: plan.hackStartTime, script: SCRIPTS.HACK },
+      { id: 3, startTime: plan.growStartTime, script: SCRIPTS.GROW },
+      { id: 4, startTime: plan.weakenAfterGrowStartTime, script: SCRIPTS.WEAKEN },
+    ];
+
+    while (tasks.length > 0) {
+      const currentTime = performance.now();
+      const dispatchableTasks = tasks.filter((task) => currentTime >= task.startTime);
+      dispatchableTasks.forEach((task) => this.ns.print("Should dispatch", task.script));
+
+      tasks = tasks.filter((task) => !dispatchableTasks.includes(task));
+
+      await this.ns.sleep(50);
+    }
   }
 
   async batch() {
