@@ -16,26 +16,31 @@ export async function main(ns) {
     isTargetReady = await manager.prepareTarget();
   }
   ns.print("INFO ", "Ready");
-  const state = await analyzeServer(ns, target);
-
-  const calculatedThreads = await manager.calculateThreads();
-  const calcuatedDurations = await manager.calculateDurations();
-  const calculatedPlan = await manager.plan(calculatedThreads, calcuatedDurations);
-  ns.print("INFO ", "Calculated Threads: ", calculatedThreads);
-  ns.print("INFO ", "Calculated Durations: ", calcuatedDurations);
-  ns.print("INFO ", "Plan: ", calculatedPlan);
-  ns.print(
-    "DEBUG ",
-    "By End Time: ",
-    calculatedPlan.sort((a, b) => a.endTime - b.endTime).map((j) => j.script),
-  );
-  ns.print(
-    "DEBUG ",
-    "By Start Time: ",
-    calculatedPlan.sort((a, b) => a.startTime - b.startTime).map((j) => j.script),
-  );
-  await manager.execute(calculatedPlan);
   await analyzeServer(ns, target);
+
+  while (true) {
+    const calculatedThreads = await manager.calculateThreads();
+    const calcuatedDurations = await manager.calculateDurations();
+    const calculatedPlan = await manager.plan(calculatedThreads, calcuatedDurations);
+    ns.print("INFO ", "Calculated Threads: ", calculatedThreads);
+    ns.print("INFO ", "Calculated Durations: ", calcuatedDurations);
+    ns.print("INFO ", "Plan: ", calculatedPlan);
+    const planByEndTime = calculatedPlan.sort((a, b) => a.endTime - b.endTime);
+    const planByStartTime = calculatedPlan.sort((a, b) => a.startTime - b.startTime);
+    ns.print(
+      "DEBUG ",
+      "By End Time: ",
+      planByEndTime.map((j) => j.script),
+    );
+    ns.print(
+      "DEBUG ",
+      "By Start Time: ",
+      planByStartTime.map((j) => j.script),
+    );
+    await manager.execute(calculatedPlan);
+    await analyzeServer(ns, target);
+    await ns.sleep(1000);
+  }
 }
 
 class HWGW {
