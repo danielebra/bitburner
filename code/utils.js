@@ -76,4 +76,5 @@ export const SCRIPTS = {
   FOREVER_WEAKEN: "/code/farm/forever-weaken.js",
   GROW: "/code/farm/grow.js",
   HACK: "/code/farm/hack.js",
+  SEQUENCER_SINGLE_TARGET: "/code/farm/sequence_against.js",
 };
