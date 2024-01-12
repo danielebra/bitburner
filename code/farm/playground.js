@@ -4,6 +4,7 @@ import { SCRIPTS, generateUUID } from "/code/utils.js";
 
 /** @param {NS} ns */
 export async function main(ns) {
+  ns.clearPort(10);
   ns.tail();
   ns.disableLog("ALL");
   ns.clearLog();
@@ -146,6 +147,7 @@ class HWGW {
       threads: threads.hackThreads,
       script: SCRIPTS.HACK,
       target: this.target,
+      duration: durations.hack,
     };
     const weakenAfterHackJob = {
       id: generateUUID(),
@@ -154,6 +156,7 @@ class HWGW {
       threads: threads.weakenThreadsAfterHack,
       script: SCRIPTS.WEAKEN,
       target: this.target,
+      duration: durations.weaken,
     };
     const weakenAfterGrowJob = {
       id: generateUUID(),
@@ -162,6 +165,7 @@ class HWGW {
       threads: threads.weakenThreadsAfterGrow,
       script: SCRIPTS.WEAKEN,
       target: this.target,
+      duration: durations.weaken,
     };
     const growJob = {
       id: generateUUID(),
@@ -170,6 +174,7 @@ class HWGW {
       threads: threads.growthThreadsForReplenish,
       script: SCRIPTS.GROW,
       target: this.target,
+      duration: durations.grow,
     };
 
     return [hackJob, weakenAfterHackJob, weakenAfterGrowJob, growJob];
@@ -183,6 +188,16 @@ class HWGW {
       const dispatchableTasks = tasks.filter((task) => currentTime >= task.startTime);
       for (const task of dispatchableTasks) {
         this.ns.print("Should dispatch", task.script);
+        this.ns.writePort(
+          10,
+          JSON.stringify({
+            // Jank extraction of type from script name
+            type: task.script.split("/").pop().split(".js")[0],
+            jobID: task.id,
+            startTime: currentTime,
+            duration: task.duration,
+          }),
+        );
         await this.cluster.distribute(task.script, task.threads, task.target, false, task.id);
       }
 

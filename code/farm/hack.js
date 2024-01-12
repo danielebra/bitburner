@@ -7,8 +7,27 @@ export async function main(ns) {
 
   // ns.tryWritePort(port, STARTED);
   ns.print(STARTED);
+  if (jobID) {
+    ns.writePort(
+      10,
+      JSON.stringify({
+        jobID: jobID,
+        startTimeActual: performance.now(),
+      }),
+    );
+  }
 
   await ns.hack(target);
+
+  if (jobID) {
+    ns.writePort(
+      10,
+      JSON.stringify({
+        jobID: jobID,
+        endTimeActual: performance.now(),
+      }),
+    );
+  }
 
   ns.print(COMPLETED);
   if (port) {
