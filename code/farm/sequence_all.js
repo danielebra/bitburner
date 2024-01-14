@@ -5,8 +5,8 @@ import { getUsableServersEnriched, generateUUID, SCRIPTS } from "/code/utils.js"
 export async function main(ns) {
   ns.disableLog("ALL");
   const servers = getUsableServersEnriched(ns)
-    // .filter((x) => x.hackable && x.maxMoney > 0 && x.recommendedToHack && x.name != "n00dles")
-    .filter((x) => x.hackable && x.maxMoney > 0 && x.name != "n00dles")
+    .filter((x) => x.hackable && x.maxMoney > 0 && x.recommendedToHack && x.name != "n00dles")
+    // .filter((x) => x.hackable && x.maxMoney > 0 && x.name != "n00dles" )
     .map((info) => info.name);
 
   for (const server of servers) {

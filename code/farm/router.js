@@ -32,7 +32,7 @@ export async function main(ns) {
         ? ns.args
         : getUsableServersEnriched(ns)
             // .filter((x) => x.hackable && x.maxMoney > 0 && x.recommendedToHack)
-            .filter((x) => x.hackable && x.maxMoney > 0 && x.name != "n00dles") // && x.recommendedToHack)
+            .filter((x) => x.hackable && x.maxMoney > 0 && x.name != "n00dles" && x.recommendedToHack)
             .map((info) => info.name);
 
     if (Object.keys(TARGETS).length != Object.keys(servers).length) {
@@ -104,8 +104,9 @@ async function prepareServer(ns, server) {
     const threadsForHalfBalance = Math.floor(data.hackThreadsNeeded / 2);
     const threadsForQuarterBalance = Math.floor(data.hackThreadsNeeded * 0.6);
     scriptToUse = SCRIPTS.HACK;
-    threadsToUse = threadsForQuarterBalance;
+    threadsToUse = threadsForHalfBalance;
   }
+  // TODO: Implement flags
   // threadsToUse = Math.min(threadsToUse, 2000)
   const distributedThreadsAllocated = await c.distribute(scriptToUse, threadsToUse, server, PORT, jobID);
   if (distributedThreadsAllocated === 0) {

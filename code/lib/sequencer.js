@@ -2,6 +2,14 @@ import { Cluster } from "/code/farm/cluster.js";
 import { analyzeServer } from "/code/farm/inspector.js";
 import { SCRIPTS, generateUUID } from "/code/utils.js";
 
+// Notes
+/*
+The next batch against the same target should be aligned with
+  - The completion of the first item in the new batch must be after the last item from the previous batch
+  - What happens to waiting for the correct time to dispatch the next job within an existing batch?
+  - Jobs for the next batch will be dispatched while the current batch is running
+  - Perhaps the planner can adapt to the number of parralel batches allowed?
+*/
 export async function controller(ns, target) {
   const manager = new HWGW(ns, target);
   let isTargetReady = false;
@@ -18,9 +26,17 @@ export async function controller(ns, target) {
     const calculatedPlan = await manager.plan(calculatedThreads, calcuatedDurations);
     const planByEndTime = calculatedPlan.sort((a, b) => a.endTime - b.endTime);
     const planByStartTime = calculatedPlan.sort((a, b) => a.startTime - b.startTime);
-    const batchTime = planByEndTime.map((j) => j.endTime)[3] - planByStartTime.map((j) => j.startTime)[3];
+    const lastEndTime = planByEndTime.map((j) => j.endTime)[3]
+    const lastStartTime = planByStartTime.map((j) => j.startTime)[3];
+
+    const batchTime =  lastEndTime - performance.now()
     ns.print("INFO ", "This batch will complete in: ", ns.tFormat(batchTime));
     await manager.execute(calculatedPlan);
+    const timeRemaining = lastEndTime - performance.now()
+    if (timeRemaining > 0) {
+      ns.print("Waiting an additional ", timeRemaining)
+      await ns.sleep(timeRemaining)
+    }
     await analyzeServer(ns, target);
     await ns.sleep(1000);
   }
@@ -44,7 +60,7 @@ export class HWGW {
       await this.ns.sleep(state.currentGrowTime);
       return false;
     } else {
-      return true;
+      return true
     }
   }
 
@@ -102,7 +118,8 @@ export class HWGW {
     const hackStartTime = weakenAfterHackEndTime - durations.hack - OFFSET;
     const hackEndTime = hackStartTime + durations.hack;
 
-    const growStartTime = hackEndTime - durations.grow + OFFSET;
+    const growStartTime = weakenAfterHackEndTime - durations.grow + OFFSET;
+    //const growStartTime = hackEndTime - durations.grow + OFFSET;
     const growEndTime = growStartTime + durations.grow;
 
     const weakenAfterGrowStartTime = growEndTime - durations.weaken + OFFSET;
@@ -173,6 +190,11 @@ export class HWGW {
 
       await this.ns.sleep(50);
     }
+
+    // Spacer
+    this.ns.writePort(10, JSON.stringify({
+        type: 'spacer',
+    }));
   }
 
   async batch() {
