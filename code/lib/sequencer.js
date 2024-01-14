@@ -28,9 +28,28 @@ export async function controller(ns, target) {
     const calculatedPlan = await manager.plan(calculatedThreads, calcuatedDurations);
 
     // TODO: Move extend plan outside of manager
-    const masterPlan = await manager.extendPlan(calculatedPlan, calculatedThreads, calcuatedDurations, 5);
+    const masterPlan = await manager.extendPlan(calculatedPlan, calculatedThreads, calcuatedDurations, 15);
 
     const masterPlanLastEndTime = [...masterPlan].sort((a, b) => a.endTime - b.endTime)[masterPlan.length - 1].endTime;
+    for (const task of [...masterPlan].sort((a, b) => a.endTime - b.endTime)) {
+      ns.writePort(
+        10,
+        JSON.stringify({
+          // Jank extraction of type from script name
+          type: task.script.split("/").pop().split(".js")[0],
+          jobID: task.id,
+          startTime: task.startTime,
+          endTime: task.endTime,
+          duration: task.duration,
+        }),
+      );
+    }
+    ns.writePort(
+      10,
+      JSON.stringify({
+        type: "spacer",
+      }),
+    );
 
     const batchTime = masterPlanLastEndTime - performance.now();
 
@@ -181,7 +200,7 @@ export class HWGW {
       const additionalPlan = await this.plan(
         calculatedThreads,
         calcuatedDurations,
-        lastEndTime - longestOperation + 1000,
+        lastEndTime - longestOperation + 2000,
       );
 
       extendedPlan = extendedPlan.concat(additionalPlan);
@@ -197,16 +216,6 @@ export class HWGW {
       const dispatchableTasks = tasks.filter((task) => currentTime >= task.startTime);
       for (const task of dispatchableTasks) {
         this.ns.print("Should dispatch", task.script);
-        this.ns.writePort(
-          10,
-          JSON.stringify({
-            // Jank extraction of type from script name
-            type: task.script.split("/").pop().split(".js")[0],
-            jobID: task.id,
-            startTime: currentTime,
-            duration: task.duration,
-          }),
-        );
         await this.cluster.distribute(task.script, task.threads, task.target, false, task.id);
       }
 
@@ -214,14 +223,6 @@ export class HWGW {
 
       await this.ns.sleep(50);
     }
-
-    // Spacer
-    this.ns.writePort(
-      10,
-      JSON.stringify({
-        type: "spacer",
-      }),
-    );
   }
 
   async batch() {
