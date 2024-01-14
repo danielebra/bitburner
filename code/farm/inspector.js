@@ -1,21 +1,23 @@
+const handleInfinity = (value) => (value === Infinity || value === 0 ? 1 : value);
+
 /** @param {NS} ns */
 export async function analyzeServer(ns, server, logState = true) {
   // Money
-  const currentMoney = ns.getServerMoneyAvailable(server);
+  const currentMoney = handleInfinity(ns.getServerMoneyAvailable(server));
   const maxMoney = ns.getServerMaxMoney(server);
-  const currentHackTime = ns.getHackTime(server);
-  const currentGrowTime = ns.getGrowTime(server);
+  const currentHackTime = handleInfinity(ns.getHackTime(server));
+  const currentGrowTime = handleInfinity(ns.getGrowTime(server));
   const moneyBalancePercentage = ((currentMoney / maxMoney) * 100).toFixed(2);
 
   // Security
   const currentSecurity = ns.getServerSecurityLevel(server);
   const minSecurity = ns.getServerMinSecurityLevel(server);
-  const currentWeakenTime = ns.getWeakenTime(server);
+  const currentWeakenTime = handleInfinity(ns.getWeakenTime(server));
   const additionalSecurity = currentSecurity - minSecurity;
 
   // Threads
-  const hackThreadsNeeded = Math.ceil(ns.hackAnalyzeThreads(server, currentMoney));
-  const growThreadsNeeded = Math.ceil(ns.growthAnalyze(server, maxMoney / currentMoney || 1));
+  const hackThreadsNeeded = Math.ceil(handleInfinity(ns.hackAnalyzeThreads(server, currentMoney)));
+  const growThreadsNeeded = Math.ceil(handleInfinity(ns.growthAnalyze(server, maxMoney / currentMoney || 1)));
   const weakenThreadsNeeded = Math.ceil((currentSecurity - minSecurity) * 20);
 
   const prettyCash = `${ns.nFormat(currentMoney, "$0.0a")} / ${ns.nFormat(
