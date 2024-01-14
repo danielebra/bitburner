@@ -11,10 +11,10 @@ export async function main(ns) {
 
   for (const server of servers) {
     if (ns.isRunning(SCRIPTS.SEQUENCER_SINGLE_TARGET, "home", server)) {
-      ns.tprint(server, " is already running with a sequencer");
+      // ns.tprint(server, " is already running with a sequencer");
       continue;
     }
-    ns.tprint("Booting up sequencer for", server);
+    ns.tprint("Booting up sequencer for: ", server);
     ns.run(SCRIPTS.SEQUENCER_SINGLE_TARGET, 1, server);
   }
 }

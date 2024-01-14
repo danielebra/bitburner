@@ -14,24 +14,24 @@ The next batch against the same target should be aligned with
 */
 export async function controller(ns, target) {
   const manager = new HWGW(ns, target);
-  let isTargetReady = false;
-  while (!isTargetReady) {
-    ns.print("INFO ", `Preparing ${target}`);
-    isTargetReady = await manager.prepareTarget();
-  }
-  ns.print("INFO ", "Ready");
-  await analyzeServer(ns, target);
 
   while (true) {
+    let isTargetReady = false;
+    while (!isTargetReady) {
+      ns.print("INFO ", `Preparing ${target}`);
+      isTargetReady = await manager.prepareTarget();
+    }
+    ns.print("INFO ", "Ready");
+    await analyzeServer(ns, target);
     const calculatedThreads = await manager.calculateThreads();
     const calcuatedDurations = await manager.calculateDurations();
     const calculatedPlan = await manager.plan(calculatedThreads, calcuatedDurations);
 
     // TODO: Move extend plan outside of manager
-    const masterPlan = await manager.extendPlan(calculatedPlan, calculatedThreads, calcuatedDurations, 15);
+    const masterPlan = await manager.extendPlan(calculatedPlan, calculatedThreads, calcuatedDurations, 5);
 
     const masterPlanLastEndTime = [...masterPlan].sort((a, b) => a.endTime - b.endTime)[masterPlan.length - 1].endTime;
-    for (const task of [...masterPlan].sort((a, b) => a.endTime - b.endTime)) {
+    for (const task of masterPlan) {
       ns.writePort(
         10,
         JSON.stringify({
