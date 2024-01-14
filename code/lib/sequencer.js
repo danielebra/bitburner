@@ -9,6 +9,8 @@ The next batch against the same target should be aligned with
   - What happens to waiting for the correct time to dispatch the next job within an existing batch?
   - Jobs for the next batch will be dispatched while the current batch is running
   - Perhaps the planner can adapt to the number of parralel batches allowed?
+
+  The first completion must occur after the previous last completion
 */
 export async function controller(ns, target) {
   const manager = new HWGW(ns, target);
@@ -24,18 +26,31 @@ export async function controller(ns, target) {
     const calculatedThreads = await manager.calculateThreads();
     const calcuatedDurations = await manager.calculateDurations();
     const calculatedPlan = await manager.plan(calculatedThreads, calcuatedDurations);
-    const planByEndTime = calculatedPlan.sort((a, b) => a.endTime - b.endTime);
-    const planByStartTime = calculatedPlan.sort((a, b) => a.startTime - b.startTime);
-    const lastEndTime = planByEndTime.map((j) => j.endTime)[3]
-    const lastStartTime = planByStartTime.map((j) => j.startTime)[3];
 
-    const batchTime =  lastEndTime - performance.now()
+    const planByEndTime = [...calculatedPlan].sort((a, b) => a.endTime - b.endTime);
+    const planByStartTime = [...calculatedPlan].sort((a, b) => a.startTime - b.startTime);
+
+    const lastEndTime = planByEndTime.map((j) => j.endTime)[3];
+    const lastStartTime = planByStartTime.map((j) => j.startTime)[3];
+    const calculatedPlan2 = await manager.plan(
+      calculatedThreads,
+      calcuatedDurations,
+      lastEndTime - calcuatedDurations.weaken + 1000,
+    );
+    ns.print("WARN", { calculatedPlan }, { calculatedPlan2 });
+
+    const masterPlan = [...calculatedPlan, ...calculatedPlan2];
+
+    const masterPlanLastEndTime = [...masterPlan].sort((a, b) => a.endTime - b.endTime)[masterPlan.length - 1].endTime;
+
+    const batchTime = masterPlanLastEndTime - performance.now();
+
     ns.print("INFO ", "This batch will complete in: ", ns.tFormat(batchTime));
-    await manager.execute(calculatedPlan);
-    const timeRemaining = lastEndTime - performance.now()
+    await manager.execute(masterPlan);
+    const timeRemaining = lastEndTime - performance.now();
     if (timeRemaining > 0) {
-      ns.print("Waiting an additional ", timeRemaining)
-      await ns.sleep(timeRemaining)
+      ns.print("Waiting an additional ", timeRemaining);
+      await ns.sleep(timeRemaining);
     }
     await analyzeServer(ns, target);
     await ns.sleep(1000);
@@ -60,7 +75,7 @@ export class HWGW {
       await this.ns.sleep(state.currentGrowTime);
       return false;
     } else {
-      return true
+      return true;
     }
   }
 
@@ -108,11 +123,11 @@ export class HWGW {
     };
   }
 
-  async plan(threads, durations) {
+  async plan(threads, durations, startTime = null) {
     // Generate a job plan from given calculated threads and durations
     const OFFSET = 1000;
 
-    const weakenAfterHackStartTime = performance.now();
+    const weakenAfterHackStartTime = startTime || performance.now();
     const weakenAfterHackEndTime = weakenAfterHackStartTime + durations.weaken;
 
     const hackStartTime = weakenAfterHackEndTime - durations.hack - OFFSET;
@@ -192,9 +207,12 @@ export class HWGW {
     }
 
     // Spacer
-    this.ns.writePort(10, JSON.stringify({
-        type: 'spacer',
-    }));
+    this.ns.writePort(
+      10,
+      JSON.stringify({
+        type: "spacer",
+      }),
+    );
   }
 
   async batch() {
