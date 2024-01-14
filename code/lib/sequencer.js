@@ -27,19 +27,8 @@ export async function controller(ns, target) {
     const calcuatedDurations = await manager.calculateDurations();
     const calculatedPlan = await manager.plan(calculatedThreads, calcuatedDurations);
 
-    const planByEndTime = [...calculatedPlan].sort((a, b) => a.endTime - b.endTime);
-    const planByStartTime = [...calculatedPlan].sort((a, b) => a.startTime - b.startTime);
-
-    const lastEndTime = planByEndTime.map((j) => j.endTime)[3];
-    const lastStartTime = planByStartTime.map((j) => j.startTime)[3];
-    const calculatedPlan2 = await manager.plan(
-      calculatedThreads,
-      calcuatedDurations,
-      lastEndTime - calcuatedDurations.weaken + 1000,
-    );
-    ns.print("WARN", { calculatedPlan }, { calculatedPlan2 });
-
-    const masterPlan = [...calculatedPlan, ...calculatedPlan2];
+    // TODO: Move extend plan outside of manager
+    const masterPlan = await manager.extendPlan(calculatedPlan, calculatedThreads, calcuatedDurations, 5);
 
     const masterPlanLastEndTime = [...masterPlan].sort((a, b) => a.endTime - b.endTime)[masterPlan.length - 1].endTime;
 
@@ -47,7 +36,7 @@ export async function controller(ns, target) {
 
     ns.print("INFO ", "This batch will complete in: ", ns.tFormat(batchTime));
     await manager.execute(masterPlan);
-    const timeRemaining = lastEndTime - performance.now();
+    const timeRemaining = masterPlanLastEndTime - performance.now();
     if (timeRemaining > 0) {
       ns.print("Waiting an additional ", timeRemaining);
       await ns.sleep(timeRemaining);
@@ -178,6 +167,26 @@ export class HWGW {
     };
 
     return [hackJob, weakenAfterHackJob, weakenAfterGrowJob, growJob];
+  }
+
+  // This doesnt belong in this class, move it out
+  async extendPlan(initialPlan, calculatedThreads, calcuatedDurations, cycles) {
+    const longestOperation = Math.max(...Object.values(calcuatedDurations));
+    let extendedPlan = [...initialPlan];
+    for (let i = 0; i != cycles; i++) {
+      // Sort the plan in order of completion time
+      extendedPlan.sort((a, b) => a.endTime - b.endTime);
+      const lastEndTime = extendedPlan[extendedPlan.length - 1].endTime;
+
+      const additionalPlan = await this.plan(
+        calculatedThreads,
+        calcuatedDurations,
+        lastEndTime - longestOperation + 1000,
+      );
+
+      extendedPlan = extendedPlan.concat(additionalPlan);
+    }
+    return extendedPlan;
   }
 
   async execute(plan) {
