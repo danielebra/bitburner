@@ -30,7 +30,7 @@ export class HWGW {
   /** @param {NS} ns */
   constructor(ns, target) {
     this.ns = ns;
-    this.cluster = new Cluster(ns);
+    this.cluster = new Cluster(ns, false);
     this.target = target;
   }
   async prepareTarget() {
