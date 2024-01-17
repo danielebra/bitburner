@@ -28,7 +28,7 @@ export async function controller(ns, target) {
     const calculatedPlan = await manager.plan(calculatedThreads, calcuatedDurations);
 
     // TODO: Move extend plan outside of manager
-    const masterPlan = await manager.extendPlan(calculatedPlan, calculatedThreads, calcuatedDurations, 5);
+    const masterPlan = await manager.extendPlan(calculatedPlan, calculatedThreads, calcuatedDurations, 2);
 
     const masterPlanLastEndTime = [...masterPlan].sort((a, b) => a.endTime - b.endTime)[masterPlan.length - 1].endTime;
     for (const task of masterPlan) {
@@ -92,7 +92,7 @@ export class HWGW {
     const cores = 1;
 
     // Calcuate the number of threads to hack half of the balance (Note: does not consider hacking chance)
-    const hackThreads = Math.ceil(state.hackThreadsNeeded / 2);
+    const hackThreads = Math.min(Math.ceil(state.hackThreadsNeeded / 2), 2500);
     // Calculates security increase after hacking half balance of target
     const securityIncreaseAfterHack = this.ns.hackAnalyzeSecurity(hackThreads, this.target);
 
@@ -185,6 +185,51 @@ export class HWGW {
       duration: durations.grow,
     };
 
+    this.ns.writePort(
+      10,
+      JSON.stringify({
+        type: "expected",
+        time: hackJob.endTime,
+        minDifficulty: this.ns.getServerMinSecurityLevel(this.target),
+        hackDifficulty: this.ns.getServerSecurityLevel(this.target) + this.ns.hackAnalyzeSecurity(hackJob.threads),
+        moneyMax: this.ns.getServerMaxMoney(this.target),
+        moneyAvailable: Math.max(
+          0,
+          this.ns.getServerMaxMoney(this.target) -
+            this.ns.hackAnalyze(this.target) * hackJob.threads * this.ns.hackAnalyzeChance(this.target),
+        ),
+      }),
+    );
+    this.ns.writePort(
+      10,
+      JSON.stringify({
+        type: "expected",
+        time: growJob.endTime,
+        minDifficulty: this.ns.getServerMinSecurityLevel(this.target),
+        hackDifficulty: this.ns.getServerSecurityLevel(this.target) + this.ns.hackAnalyzeSecurity(growJob.threads),
+        moneyMax: this.ns.getServerMaxMoney(this.target),
+        moneyAvailable: this.ns.getServerMaxMoney(this.target),
+      }),
+    );
+    this.ns.writePort(
+      10,
+      JSON.stringify({
+        type: "expected",
+        time: weakenAfterHackJob.endTime,
+        minDifficulty: this.ns.getServerMinSecurityLevel(this.target),
+        hackDifficulty: this.ns.getServerMinSecurityLevel(this.target),
+      }),
+    );
+    this.ns.writePort(
+      10,
+      JSON.stringify({
+        type: "expected",
+        time: weakenAfterGrowJob.endTime,
+        minDifficulty: this.ns.getServerMinSecurityLevel(this.target),
+        hackDifficulty: this.ns.getServerMinSecurityLevel(this.target),
+      }),
+    );
+
     return [hackJob, weakenAfterHackJob, weakenAfterGrowJob, growJob];
   }
 
@@ -214,6 +259,18 @@ export class HWGW {
     while (tasks.length > 0) {
       const currentTime = performance.now();
       const dispatchableTasks = tasks.filter((task) => currentTime >= task.startTime);
+
+      this.ns.writePort(
+        10,
+        JSON.stringify({
+          type: "observed",
+          time: performance.now(),
+          minDifficulty: this.ns.getServerMinSecurityLevel(this.target),
+          hackDifficulty: this.ns.getServerSecurityLevel(this.target),
+          moneyMax: this.ns.getServerMaxMoney(this.target),
+          moneyAvailable: this.ns.getServerMoneyAvailable(this.target),
+        }),
+      );
       for (const task of dispatchableTasks) {
         this.ns.print("Should dispatch", task.script);
         await this.cluster.distribute(task.script, task.threads, task.target, false, task.id);
