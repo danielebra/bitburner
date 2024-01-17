@@ -101,13 +101,14 @@ async function prepareServer(ns, server) {
     threadsToUse = data.growThreadsNeeded;
   } else {
     ns.print(`  • Would like to hack ${server}. ${data.prettyHack}`);
-    const threadsForHalfBalance = Math.floor(data.hackThreadsNeeded / 2);
-    const threadsForQuarterBalance = Math.floor(data.hackThreadsNeeded * 0.6);
+    const threadsToRemoveHalfBalance = Math.floor(data.hackThreadsNeeded / 2);
+    const threadsToRemoveQuarterBalance = Math.floor(data.hackThreadsNeeded * 0.25);
+    const threadsToRemove60PercentBalance = Math.floor(data.hackThreadsNeeded * 0.6);
     scriptToUse = SCRIPTS.HACK;
-    threadsToUse = threadsForHalfBalance;
+    threadsToUse = threadsToRemoveHalfBalance;
   }
   // TODO: Implement flags
-  // threadsToUse = Math.min(threadsToUse, 2000)
+  // threadsToUse = Math.min(threadsToUse, 2000);
   const distributedThreadsAllocated = await c.distribute(scriptToUse, threadsToUse, server, PORT, jobID);
   if (distributedThreadsAllocated === 0) {
     ns.print("WARN", `  Job ${jobID} was skipped due to insufficient resources`);
