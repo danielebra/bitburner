@@ -9,6 +9,18 @@ export async function main(ns) {
   }
 
   ns.tprint(path);
+  const doc = eval("document");
+
+  // Auto connect
+
+  const terminal = doc.getElementById("terminal-input")
+  terminal.value = path
+
+  const handler = Object.keys(terminal)[1];
+  terminal[handler].onChange({target:terminal});
+
+  // Simulate an enter press
+  terminal[handler].onKeyDown({key:'Enter',preventDefault:()=>null});
 
   function traverse(server, target, from) {
     if (server == target) {
@@ -35,3 +47,5 @@ export async function main(ns) {
     return "";
   }
 }
+
+
