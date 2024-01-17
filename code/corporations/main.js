@@ -10,15 +10,18 @@ const CITIES = {
 /** @param {NS} ns */
 export async function main(ns) {
   ns.tail();
-  controller(ns);
+  await controller(ns);
 }
 
 /** @param {NS} ns */
-function controller(ns) {
-  const corp = new CorporationManager(ns, ["Agriculture"]);
+async function controller(ns) {
+  const corp = new CorporationManager(ns, ["Agriculture", "escobar"]);
 
   const cities = corp.divisions.flatMap((d) => d.cities);
-  cities.forEach((c) => c.energise());
+  while (true) {
+    cities.forEach((c) => c.energise());
+    await ns.sleep(1000);
+  }
 }
 
 class CorporationManager {
