@@ -28,7 +28,7 @@ export async function controller(ns, target) {
     const calculatedPlan = await manager.plan(calculatedThreads, calcuatedDurations);
 
     // TODO: Move extend plan outside of manager
-    const masterPlan = await manager.extendPlan(calculatedPlan, calculatedThreads, calcuatedDurations, 2);
+    const masterPlan = await manager.extendPlan(calculatedPlan, calculatedThreads, calcuatedDurations, 10);
 
     const masterPlanLastEndTime = [...masterPlan].sort((a, b) => a.endTime - b.endTime)[masterPlan.length - 1].endTime;
     for (const task of masterPlan) {
@@ -74,11 +74,11 @@ export class HWGW {
   }
   async prepareTarget() {
     const state = await analyzeServer(this.ns, this.target);
-    if (state.additionalSecurity > 0) {
+    if (state.additionalSecurity > 0.5) {
       await this.cluster.distribute(SCRIPTS.WEAKEN, state.weakenThreadsNeeded, this.target);
       await this.ns.sleep(state.currentWeakenTime);
       return false;
-    } else if (state.moneyBalancePercentage < 100) {
+    } else if (state.moneyBalancePercentage < 98) {
       await this.cluster.distribute(SCRIPTS.GROW, state.growThreadsNeeded, this.target);
       await this.ns.sleep(state.currentGrowTime);
       return false;
@@ -94,7 +94,7 @@ export class HWGW {
     // Calcuate the number of threads to hack half of the balance (Note: does not consider hacking chance)
     const hackThreads = Math.min(Math.ceil(state.hackThreadsNeeded / 2), 2500);
     // Calculates security increase after hacking half balance of target
-    const securityIncreaseAfterHack = this.ns.hackAnalyzeSecurity(hackThreads, this.target);
+    const securityIncreaseAfterHack = this.ns.hackAnalyzeSecurity(hackThreads); //, this.target);
 
     // Calculates how much security would be decreased after certain number of weaken threads (is impacted by number of cores, 2nd arg)
     const securityDecreasePerThread = this.ns.weakenAnalyze(1, cores);
@@ -104,7 +104,7 @@ export class HWGW {
     const growthThreadsForReplenish = Math.ceil(
       this.ns.growthAnalyze(this.target, halfBalanceToFullBalanceMultiplier, cores),
     );
-    const securityIncreaseAfterGrow = this.ns.hackAnalyzeSecurity(growthThreadsForReplenish, this.target);
+    const securityIncreaseAfterGrow = this.ns.growthAnalyzeSecurity(growthThreadsForReplenish); // , this.target);
 
     // const weakenThreadsAfterHack = state.minSecurity + (state.minSecurity + securityIncreaseAfterHack) * 20;
     // const weakenThreadsAfterGrow = state.minSecurity + (state.minSecurity + securityIncreaseAfterGrow) * 20;
