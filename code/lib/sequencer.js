@@ -12,7 +12,7 @@ The next batch against the same target should be aligned with
 
   The first completion must occur after the previous last completion
 */
-export async function controller(ns, target) {
+export async function controller(ns, target, dynamicCycles = false) {
   const manager = new HWGW(ns, target);
 
   while (true) {
@@ -27,8 +27,24 @@ export async function controller(ns, target) {
     const calcuatedDurations = await manager.calculateDurations();
     const calculatedPlan = await manager.plan(calculatedThreads, calcuatedDurations);
 
+    const threadsPerPlan =
+      calculatedThreads.weakenThreadsAfterHack +
+      calculatedThreads.weakenThreadsAfterGrow +
+      calculatedThreads.hackThreads +
+      calculatedThreads.growthThreadsForReplenish;
+
+    const availMemory = manager.cluster.getTotalAvailableRam();
+    const USAGE_PER_THREAD = 2; // 2 Gigs per thread allocated
+    const cycleCapacity = Math.floor(availMemory / (threadsPerPlan * USAGE_PER_THREAD));
+    ns.print({ availMemory, threadsPerPlan, cycleCapacity });
+
     // TODO: Move extend plan outside of manager
-    const masterPlan = await manager.extendPlan(calculatedPlan, calculatedThreads, calcuatedDurations, 10);
+    const masterPlan = await manager.extendPlan(
+      calculatedPlan,
+      calculatedThreads,
+      calcuatedDurations,
+      dynamicCycles ? cycleCapacity - 1 : 5,
+    );
 
     const masterPlanLastEndTime = [...masterPlan].sort((a, b) => a.endTime - b.endTime)[masterPlan.length - 1].endTime;
     for (const task of masterPlan) {

@@ -15,6 +15,6 @@ export async function main(ns) {
       continue;
     }
     ns.tprint("Booting up sequencer for: ", server);
-    ns.run(SCRIPTS.SEQUENCER_SINGLE_TARGET, 1, server);
+    ns.run(SCRIPTS.SEQUENCER_SINGLE_TARGET, 1, server, "true");
   }
 }
