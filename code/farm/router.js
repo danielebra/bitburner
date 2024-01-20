@@ -32,7 +32,14 @@ export async function main(ns) {
         ? ns.args
         : getUsableServersEnriched(ns)
             // .filter((x) => x.hackable && x.maxMoney > 0 && x.recommendedToHack)
-            .filter((x) => x.hackable && x.maxMoney > 0 && x.name != "n00dles" && x.recommendedToHack)
+            .filter(
+              (x) =>
+                x.hackable &&
+                x.maxMoney > 0 &&
+                x.name != "n00dles" &&
+                x.recommendedToHack &&
+                x.name != "phantasy",
+            )
             .map((info) => info.name);
 
     if (Object.keys(TARGETS).length != Object.keys(servers).length) {

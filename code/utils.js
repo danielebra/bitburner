@@ -77,4 +77,5 @@ export const SCRIPTS = {
   GROW: "/code/farm/grow.js",
   HACK: "/code/farm/hack.js",
   SEQUENCER_SINGLE_TARGET: "/code/farm/sequence_against.js",
+  SHARE: "/code/farm/share.js",
 };

@@ -123,12 +123,20 @@ export class HWGW {
   }
 
   async calculateDurations() {
-    const state = await analyzeServer(this.ns, this.target);
+    const server = this.ns.getServer(this.target);
+    const player = this.ns.getPlayer();
     return {
-      hack: state.currentHackTime,
-      weaken: state.currentWeakenTime,
-      grow: state.currentGrowTime,
+      hack: this.ns.formulas.hacking.hackTime({ ...server, hackDifficulty: server.minDifficulty }, player),
+      weaken: this.ns.formulas.hacking.weakenTime({ ...server, hackDifficulty: server.minDifficulty }, player),
+      grow: this.ns.formulas.hacking.growTime({ ...server, hackDifficulty: server.minDifficulty }, player),
     };
+
+    //     const state = await analyzeServer(this.ns, this.target);
+    //     return {
+    //       hack: state.currentHackTime,
+    //       weaken: state.currentWeakenTime,
+    //       grow: state.currentGrowTime,
+    //     };
   }
 
   async plan(threads, durations, startTime = null) {
@@ -185,50 +193,50 @@ export class HWGW {
       duration: durations.grow,
     };
 
-    this.ns.writePort(
-      10,
-      JSON.stringify({
-        type: "expected",
-        time: hackJob.endTime,
-        minDifficulty: this.ns.getServerMinSecurityLevel(this.target),
-        hackDifficulty: this.ns.getServerSecurityLevel(this.target) + this.ns.hackAnalyzeSecurity(hackJob.threads),
-        moneyMax: this.ns.getServerMaxMoney(this.target),
-        moneyAvailable: Math.max(
-          0,
-          this.ns.getServerMaxMoney(this.target) -
-            this.ns.hackAnalyze(this.target) * hackJob.threads * this.ns.hackAnalyzeChance(this.target),
-        ),
-      }),
-    );
-    this.ns.writePort(
-      10,
-      JSON.stringify({
-        type: "expected",
-        time: growJob.endTime,
-        minDifficulty: this.ns.getServerMinSecurityLevel(this.target),
-        hackDifficulty: this.ns.getServerSecurityLevel(this.target) + this.ns.hackAnalyzeSecurity(growJob.threads),
-        moneyMax: this.ns.getServerMaxMoney(this.target),
-        moneyAvailable: this.ns.getServerMaxMoney(this.target),
-      }),
-    );
-    this.ns.writePort(
-      10,
-      JSON.stringify({
-        type: "expected",
-        time: weakenAfterHackJob.endTime,
-        minDifficulty: this.ns.getServerMinSecurityLevel(this.target),
-        hackDifficulty: this.ns.getServerMinSecurityLevel(this.target),
-      }),
-    );
-    this.ns.writePort(
-      10,
-      JSON.stringify({
-        type: "expected",
-        time: weakenAfterGrowJob.endTime,
-        minDifficulty: this.ns.getServerMinSecurityLevel(this.target),
-        hackDifficulty: this.ns.getServerMinSecurityLevel(this.target),
-      }),
-    );
+    // this.ns.writePort(
+    //   10,
+    //   JSON.stringify({
+    //     type: "expected",
+    //     time: hackJob.endTime,
+    //     minDifficulty: this.ns.getServerMinSecurityLevel(this.target),
+    //     hackDifficulty: this.ns.getServerSecurityLevel(this.target) + this.ns.hackAnalyzeSecurity(hackJob.threads),
+    //     moneyMax: this.ns.getServerMaxMoney(this.target),
+    //     moneyAvailable: Math.max(
+    //       0,
+    //       this.ns.getServerMaxMoney(this.target) -
+    //         this.ns.hackAnalyze(this.target) * hackJob.threads * this.ns.hackAnalyzeChance(this.target),
+    //     ),
+    //   }),
+    // );
+    // this.ns.writePort(
+    //   10,
+    //   JSON.stringify({
+    //     type: "expected",
+    //     time: growJob.endTime,
+    //     minDifficulty: this.ns.getServerMinSecurityLevel(this.target),
+    //     hackDifficulty: this.ns.getServerSecurityLevel(this.target) + this.ns.hackAnalyzeSecurity(growJob.threads),
+    //     moneyMax: this.ns.getServerMaxMoney(this.target),
+    //     moneyAvailable: this.ns.getServerMaxMoney(this.target),
+    //   }),
+    // );
+    // this.ns.writePort(
+    //   10,
+    //   JSON.stringify({
+    //     type: "expected",
+    //     time: weakenAfterHackJob.endTime,
+    //     minDifficulty: this.ns.getServerMinSecurityLevel(this.target),
+    //     hackDifficulty: this.ns.getServerMinSecurityLevel(this.target),
+    //   }),
+    // );
+    // this.ns.writePort(
+    //   10,
+    //   JSON.stringify({
+    //     type: "expected",
+    //     time: weakenAfterGrowJob.endTime,
+    //     minDifficulty: this.ns.getServerMinSecurityLevel(this.target),
+    //     hackDifficulty: this.ns.getServerMinSecurityLevel(this.target),
+    //   }),
+    // );
 
     return [hackJob, weakenAfterHackJob, weakenAfterGrowJob, growJob];
   }
@@ -260,17 +268,17 @@ export class HWGW {
       const currentTime = performance.now();
       const dispatchableTasks = tasks.filter((task) => currentTime >= task.startTime);
 
-      this.ns.writePort(
-        10,
-        JSON.stringify({
-          type: "observed",
-          time: performance.now(),
-          minDifficulty: this.ns.getServerMinSecurityLevel(this.target),
-          hackDifficulty: this.ns.getServerSecurityLevel(this.target),
-          moneyMax: this.ns.getServerMaxMoney(this.target),
-          moneyAvailable: this.ns.getServerMoneyAvailable(this.target),
-        }),
-      );
+      // this.ns.writePort(
+      //   10,
+      //   JSON.stringify({
+      //     type: "observed",
+      //     time: performance.now(),
+      //     minDifficulty: this.ns.getServerMinSecurityLevel(this.target),
+      //     hackDifficulty: this.ns.getServerSecurityLevel(this.target),
+      //     moneyMax: this.ns.getServerMaxMoney(this.target),
+      //     moneyAvailable: this.ns.getServerMoneyAvailable(this.target),
+      //   }),
+      // );
       for (const task of dispatchableTasks) {
         this.ns.print("Should dispatch", task.script);
         await this.cluster.distribute(task.script, task.threads, task.target, false, task.id);
