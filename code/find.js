@@ -1,6 +1,6 @@
 /** @param {NS} ns */
 export async function main(ns) {
-  let target = ns.args[0];
+  let target = ns.args[0] || "w0r1d_d43m0n";
 
   let path = traverse("home", target, "home");
   if (path == "") {
